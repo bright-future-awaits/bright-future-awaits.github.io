@@ -1,165 +1,137 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aaron DeNuto</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aaron DeNuto</title>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #0f172a;
-      color: white;
-    }
+<style>
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow: hidden;
+    color: black;
+  }
 
-    /* NAVBAR */
-    .navbar {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      padding: 15px 20px;
-      background: #020617;
-      border-bottom: 1px solid #1e293b;
-    }
+  /* Background */
+  .bg {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background: url('https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=2000') center/cover no-repeat;
+    filter: blur(6px) grayscale(100%);
+    z-index: -1;
+  }
 
-    .left {
-      position: absolute;
-      left: 20px;
-      display: flex;
-      align-items: center;
-    }
+  /* Navbar */
+  .nav {
+    position: absolute;
+    top: 20px;
+    right: 40px;
+    display: flex;
+    gap: 25px;
+    font-size: 14px;
+  }
 
-    .left img {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      object-fit: cover;
-    }
+  .nav a {
+    text-decoration: none;
+    color: black;
+    opacity: 0.8;
+  }
 
-    .center h1 {
-      margin: 0;
-      font-size: 1.5em;
-    }
+  /* Hero */
+  .hero {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: 0.6s;
+  }
 
-    .right {
-      position: absolute;
-      right: 20px;
-      display: flex;
-      gap: 10px;
-    }
+  .hero h1 {
+    font-size: 4em;
+    margin: 0;
+    font-weight: 500;
+  }
 
-    .right a {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      background: #1e293b;
-      border-radius: 50%;
-      transition: 0.2s;
-    }
+  .hero p {
+    margin-top: 10px;
+    font-size: 1.5em;
+    opacity: 0.7;
+  }
 
-    .right a:hover {
-      background: #3b82f6;
-    }
+  /* Game mode */
+  .game {
+    position: absolute;
+    inset: 0;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    background: black;
+    font-size: 2em;
+  }
 
-    .right img {
-      width: 18px;
-      height: 18px;
-      filter: invert(1);
-    }
+  .fade {
+    opacity: 0;
+  }
 
-    /* MAIN */
-    .main {
-      padding: 60px 20px;
-      max-width: 1000px;
-      margin: auto;
-    }
+  .button {
+    margin-top: 30px;
+    padding: 10px 20px;
+    border: 1px solid black;
+    cursor: pointer;
+    transition: 0.2s;
+  }
 
-    h2 {
-      margin-bottom: 20px;
-    }
-
-    .projects {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-    }
-
-    .card {
-      background: #1e293b;
-      padding: 20px;
-      border-radius: 10px;
-      transition: 0.2s;
-    }
-
-    .card:hover {
-      transform: translateY(-5px);
-    }
-
-    .card h3 {
-      margin-top: 0;
-    }
-  </style>
+  .button:hover {
+    background: black;
+    color: white;
+  }
+</style>
 </head>
 
 <body>
 
-  <!-- NAVBAR -->
-  <div class="navbar">
-    <div class="left">
-      <img src="https://via.placeholder.com/100" alt="Profile">
-    </div>
+<div class="bg"></div>
 
-    <div class="center">
-      <h1>Aaron DeNuto</h1>
-    </div>
+<!-- NAV -->
+<div class="nav">
+  <a href="#">About</a>
+  <a href="#">Projects</a>
+  <a href="#">Contact</a>
+</div>
 
-    <div class="right">
-      <a href="https://www.instagram.com/aarondenuto/" target="_blank">
-        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/instagram.svg">
-      </a>
-      <a href="https://facebook.com" target="_blank">
-        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/facebook.svg">
-      </a>
-      <a href="https://x.com/aarondenuto" target="_blank">
-        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/x.svg">
-      </a>
-      <a href="https://www.linkedin.com/in/aaron-denuto/" target="_blank">
-        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linkedin.svg">
-      </a>
-      <a href="https://github.com/aarondenuto" target="_blank">
-        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/github.svg">
-      </a>
-      <a href="https://www.tiktok.com/@aarondenuto" target="_blank">
-        <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/tiktok.svg">
-      </a>
-    </div>
-  </div>
+<!-- HERO -->
+<div class="hero" id="hero">
+  <h1>Aaron DeNuto</h1>
+  <p>Interactive Portfolio</p>
+  <div class="button" onclick="startGame()">Enter</div>
+</div>
 
-  <!-- MAIN CONTENT -->
-  <div class="main">
-    <h2>Projects</h2>
+<!-- GAME -->
+<div class="game" id="game">
+  <div id="gameText">Click anywhere</div>
+</div>
 
-    <div class="projects">
-      <div class="card">
-        <h3>Project One</h3>
-        <p>Describe your project here.</p>
-      </div>
+<script>
+  function startGame() {
+    document.getElementById("hero").classList.add("fade");
+    setTimeout(() => {
+      document.getElementById("hero").style.display = "none";
+      document.getElementById("game").style.display = "flex";
+    }, 600);
+  }
 
-      <div class="card">
-        <h3>Project Two</h3>
-        <p>Describe your project here.</p>
-      </div>
+  let count = 0;
 
-      <div class="card">
-        <h3>Project Three</h3>
-        <p>Describe your project here.</p>
-      </div>
-    </div>
-  </div>
+  document.getElementById("game").addEventListener("click", () => {
+    count++;
+    document.getElementById("gameText").innerText =
+      "Clicks: " + count;
+  });
+</script>
 
 </body>
 </html>
