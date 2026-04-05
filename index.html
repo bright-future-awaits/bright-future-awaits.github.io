@@ -13,7 +13,6 @@
     color: black;
   }
 
-  /* Background */
   .bg {
     position: fixed;
     width: 100%;
@@ -23,7 +22,6 @@
     z-index: -1;
   }
 
-  /* Navbar */
   .nav {
     position: absolute;
     top: 20px;
@@ -39,55 +37,22 @@
     opacity: 0.8;
   }
 
-  /* Hero */
   .hero {
     height: 100vh;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    transition: 0.6s;
   }
 
-  .hero h1 {
+  h1 {
     font-size: 4em;
     margin: 0;
-    font-weight: 500;
   }
 
-  .hero p {
-    margin-top: 10px;
+  p {
     font-size: 1.5em;
     opacity: 0.7;
-  }
-
-  /* Game mode */
-  .game {
-    position: absolute;
-    inset: 0;
-    display: none;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    background: black;
-    font-size: 2em;
-  }
-
-  .fade {
-    opacity: 0;
-  }
-
-  .button {
-    margin-top: 30px;
-    padding: 10px 20px;
-    border: 1px solid black;
-    cursor: pointer;
-    transition: 0.2s;
-  }
-
-  .button:hover {
-    background: black;
-    color: white;
   }
 </style>
 </head>
@@ -96,42 +61,14 @@
 
 <div class="bg"></div>
 
-<!-- NAV -->
 <div class="nav">
-  <a href="#">About</a>
-  <a href="/projects/">Projects</a>
-  <a href="#">Contact</a>
+  <a href="/portfolio/">Portfolio</a>
 </div>
 
-<!-- HERO -->
-<div class="hero" id="hero">
+<div class="hero">
   <h1>Aaron DeNuto</h1>
   <p>Interactive Portfolio</p>
-  <div class="button" onclick="startGame()">Enter</div>
 </div>
-
-<!-- GAME -->
-<div class="game" id="game">
-  <div id="gameText">Click anywhere</div>
-</div>
-
-<script>
-  function startGame() {
-    document.getElementById("hero").classList.add("fade");
-    setTimeout(() => {
-      document.getElementById("hero").style.display = "none";
-      document.getElementById("game").style.display = "flex";
-    }, 600);
-  }
-
-  let count = 0;
-
-  document.getElementById("game").addEventListener("click", () => {
-    count++;
-    document.getElementById("gameText").innerText =
-      "Clicks: " + count;
-  });
-</script>
 
 </body>
 </html>
