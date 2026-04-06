@@ -94,15 +94,16 @@
     cursor: pointer;
     border-radius: 6px;
     font-size: 16px;
+    z-index: 5;
   }
 
   /* GAME LAYER */
   .game-container {
     position: fixed;
     inset: 0;
-    background: #222;
+    background: #444; /* grayish */
     opacity: 0;
-    pointer-events: none;
+    pointer-events: none; /* allows button to stay clickable */
     transition: opacity 0.4s ease;
     z-index: 999;
   }
@@ -158,7 +159,7 @@
 const btn = document.getElementById("playBtn");
 const gameContainer = document.getElementById("gameContainer");
 
-/* --- PROXIMITY (MAX 50%) --- */
+/* --- PROXIMITY FADE (does NOT block button) --- */
 document.addEventListener("mousemove", e => {
   if (gameContainer.dataset.active === "true") return;
 
@@ -172,12 +173,12 @@ document.addEventListener("mousemove", e => {
 
   const maxDist = 300;
   let opacity = 1 - (distance / maxDist);
-  opacity = Math.max(0, Math.min(0.5, opacity * 0.5)); // cap at 50%
+  opacity = Math.max(0, Math.min(0.5, opacity * 0.5));
 
   gameContainer.style.opacity = opacity;
 });
 
-/* --- CLICK FULL FADE --- */
+/* --- CLICK ENTER --- */
 btn.addEventListener("click", () => {
   gameContainer.dataset.active = "true";
   gameContainer.style.pointerEvents = "auto";
@@ -186,6 +187,7 @@ btn.addEventListener("click", () => {
   loop();
 });
 
+/* --- EXIT --- */
 function exitGame() {
   gameContainer.dataset.active = "false";
   gameContainer.style.pointerEvents = "none";
@@ -215,17 +217,12 @@ function update() {
 }
 
 function draw() {
-  ctx.fillStyle = "#3cb043";
+  /* gray world, no grid */
+  ctx.fillStyle = "#555";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.strokeStyle = "rgba(0,0,0,0.1)";
-  for (let x = 0; x < canvas.width; x += 40) {
-    for (let y = 0; y < canvas.height; y += 40) {
-      ctx.strokeRect(x, y, 40, 40);
-    }
-  }
-
-  ctx.fillStyle = "blue";
+  /* player */
+  ctx.fillStyle = "white";
   ctx.fillRect(player.x, player.y, player.size, player.size);
 }
 
