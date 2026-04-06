@@ -29,6 +29,17 @@
     background: rgba(0,0,0,0.4);
   }
 
+  /* proximity overlay */
+  .bg-overlay {
+    position: fixed;
+    inset: 0;
+    background: black;
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+    transition: opacity 0.1s linear;
+  }
+
   #ui {
     transition: opacity 0.4s ease;
   }
@@ -58,10 +69,19 @@
     gap: 18px;
   }
 
+  .right a {
+    display: inline-block;
+  }
+
   .right img {
     width: 22px;
     height: 22px;
     cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .right a:hover img {
+    transform: scale(1.3);
   }
 
   .portfolio {
@@ -132,6 +152,7 @@
 <body>
 
 <div class="bg"></div>
+<div class="bg-overlay" id="bgOverlay"></div>
 
 <div id="ui">
   <div class="nav">
@@ -165,6 +186,7 @@
 const btn = document.getElementById("playBtn");
 const gameContainer = document.getElementById("gameContainer");
 const ui = document.getElementById("ui");
+const overlay = document.getElementById("bgOverlay");
 
 /* CANVAS */
 const canvas = document.getElementById("game");
@@ -185,6 +207,25 @@ let running = false;
 /* INPUT */
 document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup", e => keys[e.key] = false);
+
+/* PROXIMITY FADE */
+document.addEventListener("mousemove", (e) => {
+  if (running) return;
+
+  const rect = btn.getBoundingClientRect();
+  const bx = rect.left + rect.width / 2;
+  const by = rect.top + rect.height / 2;
+
+  const dx = e.clientX - bx;
+  const dy = e.clientY - by;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  const maxDist = 300;
+  let t = 1 - (distance / maxDist);
+  t = Math.max(0, Math.min(1, t));
+
+  overlay.style.opacity = t * 0.6;
+});
 
 /* UPDATE */
 function update() {
@@ -235,10 +276,10 @@ btn.addEventListener("click", () => {
   gameContainer.style.zIndex = 999;
   gameContainer.style.pointerEvents = "auto";
 
-  // force reflow (ensures transition runs)
   gameContainer.offsetHeight;
 
   ui.style.opacity = "0";
+  overlay.style.opacity = "1";
   gameContainer.style.opacity = "1";
 
   setTimeout(() => {
@@ -257,6 +298,7 @@ function exitGame() {
   gameContainer.style.zIndex = -1;
 
   ui.style.opacity = "1";
+  overlay.style.opacity = "0";
 }
 </script>
 
