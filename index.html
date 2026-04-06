@@ -40,6 +40,7 @@
     align-items: center;
     padding: 0 30px;
     z-index: 10;
+    transition: opacity 0.4s ease;
   }
 
   .profile {
@@ -67,12 +68,13 @@
 
   .hero {
     position: relative;
-    z-index: 2;
+    z-index: 5;
     height: 100vh;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    transition: opacity 0.4s ease;
   }
 
   h1 {
@@ -94,18 +96,17 @@
     cursor: pointer;
     border-radius: 6px;
     font-size: 16px;
-    z-index: 5;
   }
 
   /* GAME LAYER */
   .game-container {
     position: fixed;
     inset: 0;
-    background: #444; /* grayish */
+    background: #444;
     opacity: 0;
-    pointer-events: none; /* allows button to stay clickable */
+    pointer-events: none;
     transition: opacity 0.4s ease;
-    z-index: 999;
+    z-index: 1;
   }
 
   canvas {
@@ -158,79 +159,100 @@
 <script>
 const btn = document.getElementById("playBtn");
 const gameContainer = document.getElementById("gameContainer");
+const hero = document.querySelector(".hero");
+const nav = document.querySelector(".nav");
 
-/* --- PROXIMITY FADE (does NOT block button) --- */
-document.addEventListener("mousemove", e => {
-  if (gameContainer.dataset.active === "true") return;
-
-  const rect = btn.getBoundingClientRect();
-  const bx = rect.left + rect.width / 2;
-  const by = rect.top + rect.height / 2;
-
-  const dx = e.clientX - bx;
-  const dy = e.clientY - by;
-  const distance = Math.sqrt(dx*dx + dy*dy);
-
-  const maxDist = 300;
-  let opacity = 1 - (distance / maxDist);
-  opacity = Math.max(0, Math.min(0.5, opacity * 0.5));
-
-  gameContainer.style.opacity = opacity;
-});
-
-/* --- CLICK ENTER --- */
-btn.addEventListener("click", () => {
-  gameContainer.dataset.active = "true";
-  gameContainer.style.pointerEvents = "auto";
-  gameContainer.style.opacity = 1;
-  running = true;
-  loop();
-});
-
-/* --- EXIT --- */
-function exitGame() {
-  gameContainer.dataset.active = "false";
-  gameContainer.style.pointerEvents = "none";
-  gameContainer.style.opacity = 0;
-  running = false;
-}
-
-/* --- GAME --- */
+/* --- GAME SETUP --- */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
 
 let player = { x: 200, y: 200, size: 20, speed: 3 };
 let keys = {};
 let running = false;
 
+/* --- INPUT --- */
 document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup", e => keys[e.key] = false);
 
+/* --- UPDATE --- */
 function update() {
+  if (!running) return;
+
   if (keys["w"] || keys["ArrowUp"]) player.y -= player.speed;
   if (keys["s"] || keys["ArrowDown"]) player.y += player.speed;
   if (keys["a"] || keys["ArrowLeft"]) player.x -= player.speed;
   if (keys["d"] || keys["ArrowRight"]) player.x += player.speed;
+
+  // boundaries
+  player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+  player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
 }
 
+/* --- DRAW --- */
 function draw() {
-  /* gray world, no grid */
   ctx.fillStyle = "#555";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  /* player */
   ctx.fillStyle = "white";
   ctx.fillRect(player.x, player.y, player.size, player.size);
 }
 
-function loop() {
+/* --- FIXED FPS LOOP --- */
+let lastTime = 0;
+const fps = 60;
+const frameDuration = 1000 / fps;
+let accumulator = 0;
+
+function loop(currentTime) {
   if (!running) return;
-  update();
+
+  const delta = currentTime - lastTime;
+  lastTime = currentTime;
+  accumulator += delta;
+
+  while (accumulator >= frameDuration) {
+    update();
+    accumulator -= frameDuration;
+  }
+
   draw();
   requestAnimationFrame(loop);
+}
+
+/* --- ENTER GAME --- */
+btn.addEventListener("click", () => {
+  gameContainer.style.zIndex = 999;
+  gameContainer.style.pointerEvents = "auto";
+
+  hero.style.opacity = "0";
+  nav.style.opacity = "0";
+  gameContainer.style.opacity = "1";
+
+  setTimeout(() => {
+    running = true;
+    lastTime = performance.now();
+    loop(lastTime);
+  }, 400);
+});
+
+/* --- EXIT GAME --- */
+function exitGame() {
+  running = false;
+
+  gameContainer.style.opacity = "0";
+  gameContainer.style.pointerEvents = "none";
+
+  hero.style.opacity = "1";
+  nav.style.opacity = "1";
+
+  gameContainer.style.zIndex = 1;
 }
 </script>
 
