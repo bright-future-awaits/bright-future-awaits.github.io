@@ -58,6 +58,7 @@
   .right img {
     width: 22px;
     height: 22px;
+    cursor: pointer;
   }
 
   .portfolio {
@@ -106,7 +107,7 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.4s ease;
-    z-index: 1;
+    z-index: -1; /* critical fix */
   }
 
   canvas {
@@ -162,7 +163,7 @@ const gameContainer = document.getElementById("gameContainer");
 const hero = document.querySelector(".hero");
 const nav = document.querySelector(".nav");
 
-/* --- GAME SETUP --- */
+/* --- CANVAS --- */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
@@ -173,6 +174,7 @@ function resize() {
 resize();
 window.addEventListener("resize", resize);
 
+/* --- GAME STATE --- */
 let player = { x: 200, y: 200, size: 20, speed: 3 };
 let keys = {};
 let running = false;
@@ -190,7 +192,6 @@ function update() {
   if (keys["a"] || keys["ArrowLeft"]) player.x -= player.speed;
   if (keys["d"] || keys["ArrowRight"]) player.x += player.speed;
 
-  // boundaries
   player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
   player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
 }
@@ -252,7 +253,7 @@ function exitGame() {
   hero.style.opacity = "1";
   nav.style.opacity = "1";
 
-  gameContainer.style.zIndex = 1;
+  gameContainer.style.zIndex = -1;
 }
 </script>
 
