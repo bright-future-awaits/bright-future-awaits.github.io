@@ -29,7 +29,6 @@
     background: rgba(0,0,0,0.4);
   }
 
-  /* proximity overlay */
   .bg-overlay {
     position: fixed;
     inset: 0;
@@ -121,7 +120,6 @@
     font-size: 16px;
   }
 
-  /* GAME */
   .game-container {
     position: fixed;
     inset: 0;
@@ -188,7 +186,6 @@ const gameContainer = document.getElementById("gameContainer");
 const ui = document.getElementById("ui");
 const overlay = document.getElementById("bgOverlay");
 
-/* CANVAS */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
@@ -199,16 +196,20 @@ function resize() {
 resize();
 window.addEventListener("resize", resize);
 
-/* STATE */
 let player = { x: 200, y: 200, size: 20, speed: 3 };
 let keys = {};
 let running = false;
 
-/* INPUT */
 document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup", e => keys[e.key] = false);
 
-/* PROXIMITY FADE */
+/* ESC KEY EXIT (only when running) */
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && running) {
+    exitGame();
+  }
+});
+
 document.addEventListener("mousemove", (e) => {
   if (running) return;
 
@@ -227,7 +228,6 @@ document.addEventListener("mousemove", (e) => {
   overlay.style.opacity = t * 0.6;
 });
 
-/* UPDATE */
 function update() {
   if (!running) return;
 
@@ -240,7 +240,6 @@ function update() {
   player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
 }
 
-/* DRAW */
 function draw() {
   ctx.fillStyle = "#555";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -249,7 +248,6 @@ function draw() {
   ctx.fillRect(player.x, player.y, player.size, player.size);
 }
 
-/* FIXED FPS */
 let lastTime = 0;
 const fps = 60;
 const frameDuration = 1000 / fps;
@@ -271,7 +269,6 @@ function loop(currentTime) {
   requestAnimationFrame(loop);
 }
 
-/* ENTER */
 btn.addEventListener("click", () => {
   gameContainer.style.zIndex = 999;
   gameContainer.style.pointerEvents = "auto";
@@ -289,7 +286,6 @@ btn.addEventListener("click", () => {
   }, 400);
 });
 
-/* EXIT */
 function exitGame() {
   running = false;
 
