@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NOM Clone</title>
+<title>NOM</title>
 
 <style>
   body {
@@ -14,7 +14,13 @@
     padding: 20px;
   }
 
-  h1 { margin-bottom: 20px; }
+  h1 { margin-bottom: 10px; }
+
+  #status {
+    font-size: 14px;
+    opacity: 0.6;
+    margin-bottom: 20px;
+  }
 
   select {
     padding: 10px;
@@ -37,47 +43,74 @@
 <body>
 
 <h1>NOM</h1>
+<div id="status">Initializing...</div>
 
 <select id="hallSelect"></select>
 <div id="menu"></div>
 
 <script>
-const PROXY = "https://api.allorigins.win/raw?url=";
+const PROXY = "https://corsproxy.io/?";
 const URL = "https://dining.ucla.edu/menus-at-a-glance/";
 
 let data = [];
 
+function setStatus(msg) {
+  document.getElementById("status").textContent = msg;
+  console.log(msg);
+}
+
 async function loadMenu() {
-  const res = await fetch(PROXY + encodeURIComponent(URL));
-  const html = await res.text();
+  try {
+    setStatus("Fetching menu...");
 
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, "text/html");
+    const res = await fetch(PROXY + URL);
+    setStatus("Response status: " + res.status);
 
-  const halls = doc.querySelectorAll(".menu-block");
+    const html = await res.text();
+    setStatus("HTML received");
 
-  halls.forEach(hall => {
-    const hallName = hall.querySelector("h3")?.innerText.trim();
-    if (!hallName) return;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
 
-    const meals = {};
+    // DEBUG: check structure
+    console.log(doc);
 
-    hall.querySelectorAll(".col-md-4").forEach(col => {
-      const mealName = col.querySelector("h4")?.innerText.trim();
-      if (!mealName) return;
+    const halls = doc.querySelectorAll(".menu-block");
+    setStatus("Halls found: " + halls.length);
 
-      const items = [];
-      col.querySelectorAll("li").forEach(li => {
-        items.push(li.innerText.trim());
+    if (halls.length === 0) {
+      setStatus("ERROR: No data found (selectors likely broken)");
+      return;
+    }
+
+    halls.forEach(hall => {
+      const hallName = hall.querySelector("h3")?.innerText.trim();
+      if (!hallName) return;
+
+      const meals = {};
+
+      hall.querySelectorAll(".col-md-4").forEach(col => {
+        const mealName = col.querySelector("h4")?.innerText.trim();
+        if (!mealName) return;
+
+        const items = [];
+        col.querySelectorAll("li").forEach(li => {
+          items.push(li.innerText.trim());
+        });
+
+        meals[mealName] = items;
       });
 
-      meals[mealName] = items;
+      data.push({ diningHall: hallName, meals });
     });
 
-    data.push({ diningHall: hallName, meals });
-  });
+    initUI();
+    setStatus("Loaded successfully");
 
-  initUI();
+  } catch (err) {
+    console.error(err);
+    setStatus("ERROR: " + err.message);
+  }
 }
 
 function initUI() {
@@ -121,6 +154,7 @@ function render(index) {
   });
 }
 
+console.log("script loaded");
 loadMenu();
 </script>
 
