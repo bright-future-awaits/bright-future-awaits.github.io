@@ -49,8 +49,13 @@
 <div id="menu"></div>
 
 <script>
-const PROXY = "https://api.allorigins.win/raw?url=";
 const URL = "https://dining.ucla.edu/menus-at-a-glance/";
+
+// multiple proxies (fallback system)
+const PROXIES = [
+  url => "https://cors.isomorphic-git.org/" + url,
+  url => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url)
+];
 
 let data = [];
 
@@ -60,31 +65,55 @@ function setStatus(msg) {
   console.log(msg);
 }
 
+async function fetchWithTimeout(url) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    return res;
+  } catch (err) {
+    clearTimeout(timeout);
+    throw err;
+  }
+}
+
+async function tryFetch() {
+  for (let i = 0; i < PROXIES.length; i++) {
+    try {
+      setStatus("Trying proxy " + (i + 1));
+
+      const res = await fetchWithTimeout(PROXIES[i](URL));
+
+      if (res && res.ok) {
+        setStatus("Connected via proxy " + (i + 1));
+        return await res.text();
+      }
+
+    } catch (err) {
+      console.log("Proxy failed:", i + 1);
+    }
+  }
+
+  throw new Error("All proxies failed");
+}
+
 async function loadMenu() {
   try {
     setStatus("Fetching menu...");
 
-    const res = await fetch(PROXY + encodeURIComponent(URL));
-    setStatus("Response status: " + res.status);
-
-    if (!res.ok) {
-      setStatus("ERROR: Request failed");
-      return;
-    }
-
-    const html = await res.text();
+    const html = await tryFetch();
 
     if (!html || html.length < 1000) {
-      setStatus("ERROR: Invalid HTML (proxy blocked)");
+      setStatus("ERROR: Invalid HTML");
       return;
     }
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
 
-    // find all dining hall headers
     const hallHeaders = [...doc.querySelectorAll("h3")];
-
     setStatus("Hall headers found: " + hallHeaders.length);
 
     data = [];
@@ -92,7 +121,6 @@ async function loadMenu() {
     hallHeaders.forEach(h3 => {
       const hallName = h3.innerText.trim();
       const parent = h3.parentElement;
-
       if (!hallName || !parent) return;
 
       const meals = {};
@@ -124,7 +152,7 @@ async function loadMenu() {
     });
 
     if (data.length === 0) {
-      setStatus("ERROR: Parsing failed (structure changed)");
+      setStatus("ERROR: Parsing failed");
       return;
     }
 
