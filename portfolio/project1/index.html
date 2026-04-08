@@ -1,3 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOM</title>
+
+<style>
+  body {
+    margin: 0;
+    background: #111;
+    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 20px;
+  }
+
+  h1 { margin-bottom: 10px; }
+
+  #status {
+    font-size: 14px;
+    opacity: 0.6;
+    margin-bottom: 20px;
+  }
+
+  select {
+    padding: 10px;
+    margin-bottom: 20px;
+    background: #222;
+    color: white;
+    border: none;
+  }
+
+  .meal { margin-bottom: 25px; }
+
+  .item {
+    opacity: 0.85;
+    margin-left: 10px;
+    margin-top: 4px;
+  }
+</style>
+</head>
+
+<body>
+
+<h1>NOM</h1>
+<div id="status">Starting...</div>
+
+<select id="hallSelect"></select>
+<div id="menu"></div>
+
 <script>
 const PROXY = "https://api.allorigins.win/raw?url=";
 const URL = "https://dining.ucla.edu/menus-at-a-glance/";
@@ -5,7 +55,8 @@ const URL = "https://dining.ucla.edu/menus-at-a-glance/";
 let data = [];
 
 function setStatus(msg) {
-  document.getElementById("status").textContent = msg;
+  const el = document.getElementById("status");
+  if (el) el.textContent = msg;
   console.log(msg);
 }
 
@@ -16,44 +67,50 @@ async function loadMenu() {
     const res = await fetch(PROXY + encodeURIComponent(URL));
     setStatus("Response status: " + res.status);
 
+    if (!res.ok) {
+      setStatus("ERROR: Request failed");
+      return;
+    }
+
     const html = await res.text();
 
-    if (!html.includes("menu")) {
-      setStatus("ERROR: Proxy blocked or invalid HTML");
+    if (!html || html.length < 1000) {
+      setStatus("ERROR: Invalid HTML (proxy blocked)");
       return;
     }
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
 
-    // UPDATED SELECTORS (more flexible)
-    const halls = doc.querySelectorAll("h3");
-    setStatus("Halls found: " + halls.length);
+    // find all dining hall headers
+    const hallHeaders = [...doc.querySelectorAll("h3")];
+
+    setStatus("Hall headers found: " + hallHeaders.length);
 
     data = [];
 
-    halls.forEach(h3 => {
+    hallHeaders.forEach(h3 => {
       const hallName = h3.innerText.trim();
+      const parent = h3.parentElement;
 
-      // grab next sibling container
-      let container = h3.parentElement;
-      if (!container) return;
+      if (!hallName || !parent) return;
 
       const meals = {};
 
-      container.querySelectorAll("h4").forEach(mealEl => {
+      parent.querySelectorAll("h4").forEach(mealEl => {
         const mealName = mealEl.innerText.trim();
-
         let items = [];
-        let next = mealEl.nextElementSibling;
 
-        while (next && next.tagName !== "H4") {
-          if (next.tagName === "UL") {
-            next.querySelectorAll("li").forEach(li => {
-              items.push(li.innerText.trim());
+        let el = mealEl.nextElementSibling;
+
+        while (el && el.tagName !== "H4") {
+          if (el.tagName === "UL") {
+            el.querySelectorAll("li").forEach(li => {
+              const text = li.innerText.trim();
+              if (text) items.push(text);
             });
           }
-          next = next.nextElementSibling;
+          el = el.nextElementSibling;
         }
 
         if (mealName && items.length) {
@@ -61,13 +118,13 @@ async function loadMenu() {
         }
       });
 
-      if (Object.keys(meals).length) {
+      if (Object.keys(meals).length > 0) {
         data.push({ diningHall: hallName, meals });
       }
     });
 
     if (data.length === 0) {
-      setStatus("ERROR: Parsing failed");
+      setStatus("ERROR: Parsing failed (structure changed)");
       return;
     }
 
@@ -82,6 +139,7 @@ async function loadMenu() {
 
 function initUI() {
   const select = document.getElementById("hallSelect");
+  select.innerHTML = "";
 
   data.forEach((hall, i) => {
     const option = document.createElement("option");
@@ -123,3 +181,6 @@ function render(index) {
 
 loadMenu();
 </script>
+
+</body>
+</html>
