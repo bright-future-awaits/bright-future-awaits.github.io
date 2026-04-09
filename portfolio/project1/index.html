@@ -43,125 +43,35 @@
 <body>
 
 <h1>NOM</h1>
-<div id="status">Starting...</div>
+<div id="status">Loading...</div>
 
 <select id="hallSelect"></select>
 <div id="menu"></div>
 
 <script>
-const URL = "https://dining.ucla.edu/menus-at-a-glance/";
-
-// multiple proxies (fallback system)
-const PROXIES = [
-  url => "https://cors.isomorphic-git.org/" + url,
-  url => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url)
-];
-
 let data = [];
 
 function setStatus(msg) {
   const el = document.getElementById("status");
   if (el) el.textContent = msg;
-  console.log(msg);
-}
-
-async function fetchWithTimeout(url) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-
-  try {
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeout);
-    return res;
-  } catch (err) {
-    clearTimeout(timeout);
-    throw err;
-  }
-}
-
-async function tryFetch() {
-  for (let i = 0; i < PROXIES.length; i++) {
-    try {
-      setStatus("Trying proxy " + (i + 1));
-
-      const res = await fetchWithTimeout(PROXIES[i](URL));
-
-      if (res && res.ok) {
-        setStatus("Connected via proxy " + (i + 1));
-        return await res.text();
-      }
-
-    } catch (err) {
-      console.log("Proxy failed:", i + 1);
-    }
-  }
-
-  throw new Error("All proxies failed");
 }
 
 async function loadMenu() {
   try {
-    setStatus("Fetching menu...");
+    const res = await fetch("menu.json");
 
-    const html = await tryFetch();
-
-    if (!html || html.length < 1000) {
-      setStatus("ERROR: Invalid HTML");
+    if (!res.ok) {
+      setStatus("Failed to load menu.json");
       return;
     }
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
-
-    const hallHeaders = [...doc.querySelectorAll("h3")];
-    setStatus("Hall headers found: " + hallHeaders.length);
-
-    data = [];
-
-    hallHeaders.forEach(h3 => {
-      const hallName = h3.innerText.trim();
-      const parent = h3.parentElement;
-      if (!hallName || !parent) return;
-
-      const meals = {};
-
-      parent.querySelectorAll("h4").forEach(mealEl => {
-        const mealName = mealEl.innerText.trim();
-        let items = [];
-
-        let el = mealEl.nextElementSibling;
-
-        while (el && el.tagName !== "H4") {
-          if (el.tagName === "UL") {
-            el.querySelectorAll("li").forEach(li => {
-              const text = li.innerText.trim();
-              if (text) items.push(text);
-            });
-          }
-          el = el.nextElementSibling;
-        }
-
-        if (mealName && items.length) {
-          meals[mealName] = items;
-        }
-      });
-
-      if (Object.keys(meals).length > 0) {
-        data.push({ diningHall: hallName, meals });
-      }
-    });
-
-    if (data.length === 0) {
-      setStatus("ERROR: Parsing failed");
-      return;
-    }
+    data = await res.json();
 
     initUI();
-    setStatus("Loaded successfully");
+    setStatus("Loaded");
 
   } catch (err) {
-    console.error(err);
-    setStatus("ERROR: " + err.message);
+    setStatus("Error loading data");
   }
 }
 
