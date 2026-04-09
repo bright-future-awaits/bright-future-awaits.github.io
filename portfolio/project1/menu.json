@@ -1,1 +1,55 @@
-
+[
+  {
+    "diningHall": "Bruin Plate",
+    "meals": {
+      "Breakfast": [
+        "Scrambled Eggs",
+        "Oatmeal",
+        "Fruit Bar"
+      ],
+      "Lunch": [
+        "Grilled Chicken",
+        "Brown Rice",
+        "Steamed Vegetables"
+      ],
+      "Dinner": [
+        "Pasta Primavera",
+        "Garlic Bread",
+        "Salad"
+      ]
+    }
+  },
+  {
+    "diningHall": "De Neve Dining",
+    "meals": {
+      "Breakfast": [
+        "Pancakes",
+        "Bacon",
+        "Hash Browns"
+      ],
+      "Lunch": [
+        "Turkey Sandwich",
+        "Fries",
+        "Soup"
+      ],
+      "Dinner": [
+        "Beef Stir Fry",
+        "White Rice",
+        "Egg Rolls"
+      ]
+    }
+  },
+  {
+    "diningHall": "Epicuria",
+    "meals": {
+      "Lunch": [
+        "Flatbread Pizza",
+        "Caesar Salad"
+      ],
+      "Dinner": [
+        "BBQ Chicken",
+        "Mac and Cheese"
+      ]
+    }
+  }
+]
