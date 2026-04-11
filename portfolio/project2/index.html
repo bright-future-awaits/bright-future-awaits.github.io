@@ -262,11 +262,31 @@
 
   /* ── VOTE BUTTONS — sliding mechanic ── */
   /*
-    Track is 100% wide. Each half is 50% wide (flex).
-    Default: track at translateX(0) — YES left, NO right, split evenly.
-    Voted YES: track slides right by 50% so YES covers the full area.
-    Voted NO:  track slides left by 50% so NO covers the full area.
-    The overflow:hidden on .vote-area clips whatever goes out of bounds.
+    .vote-area is the clipping window (100% wide).
+    .vote-track is 200% wide (2 × container).
+    Each .vote-half is 50% of the track = 100% of the container.
+    Default: track at translateX(0)  → YES fills left half of window, NO fills right.
+    Voted YES: translateX(0) already shows YES — no move needed; actually we need
+               the track to start offset so both halves show equally.
+
+    Corrected default: start at translateX(-50%) of track width.
+    But translateX % is relative to the ELEMENT itself (200% wide).
+    50% of 200%-wide track = 100% of container. That would hide YES entirely.
+
+    Use left offset instead:
+    - Track starts at left: -50% of container (i.e. left: -50%).
+      This shifts the 200%-wide track so its midpoint aligns with the container center,
+      showing the right half of YES and the left half of NO equally.
+    - voted-yes: translateX(50% of container) = right-shift by half container.
+      Since track is 200% wide, 50% of container = 25% of track.
+      Use a CSS custom property or just calc.
+
+    Simplest correct approach: use left:-50% on track + translateX in container units via margin trick.
+    OR: just use a wrapper that is 200% wide, and translate in px via JS. 
+    
+    CLEANEST: Track = 200% wide, left = 0, default translateX = -25% (of itself = -50% of container).
+    voted-yes: translateX(0)    → track left edge at container left → YES fills container.
+    voted-no:  translateX(-50%) → track shifts left by 100% of container → NO fills container.
   */
   .vote-area {
     position: relative;
@@ -279,18 +299,20 @@
   .vote-track {
     position: absolute;
     top: 0; left: 0;
-    width: 100%;
+    width: 200%;
     height: 100%;
     display: flex;
-    transform: translateX(0);
+    transform: translateX(-25%); /* -25% of 200% wide = -50% of container: centered split */
     transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .vote-track.voted-yes { transform: translateX(50%); }
+  /* voted-yes: shift right so YES (left panel) fills container */
+  .vote-track.voted-yes { transform: translateX(0); }
+  /* voted-no: shift left so NO (right panel) fills container */
   .vote-track.voted-no  { transform: translateX(-50%); }
 
   .vote-half {
-    flex: 0 0 50%;
+    flex: 0 0 50%; /* 50% of 200% track = 100% of container */
     height: 100%;
     display: flex;
     align-items: center;
@@ -572,7 +594,7 @@
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────────────────
-const BACKEND = "https://have-you-ever-backend.onrender.com"; // ← replace with your Render URL
+const BACKEND = "https://your-app.onrender.com"; // ← replace with your Render URL
 
 // ── STATE ──────────────────────────────────────────────────────────────────
 const socket = io(BACKEND, { transports: ["websocket", "polling"] });
