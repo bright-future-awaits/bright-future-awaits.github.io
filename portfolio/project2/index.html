@@ -269,26 +269,31 @@
     margin-top: 4px;
   }
 
-  /* Track is 200% wide; default centered so both halves show at 50% each */
+  /*
+    Two full-width panels sit in a row inside a 200%-wide track.
+    The track starts translated left by 50% so both panels are
+    half-visible (split view). Sliding ±50% brings one panel
+    fully into view.
+
+    Layout:  [  YES (100%)  |  NO (100%)  ]
+                            ^
+                        seam at center = default position
+  */
   .vote-track {
     position: absolute;
-    top: 0; left: -50%;
-    width: 100%;
+    top: 0; left: 0;
+    width: 200%;
     height: 100%;
     display: flex;
+    transform: translateX(-25%);   /* default: both halves equally visible */
     transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Order: YES (left half) | NO (right half) */
-  /* Default: both visible — translateX(0) shows the center of the 200% track */
-  .vote-track               { transform: translateX(0); }
-  /* Voted YES: slide track right so YES takes full width */
-  .vote-track.voted-yes     { transform: translateX(25%); }
-  /* Voted NO: slide track left so NO takes full width */
-  .vote-track.voted-no      { transform: translateX(-25%); }
+  .vote-track.voted-yes { transform: translateX(0); }     /* slide right: YES fills */
+  .vote-track.voted-no  { transform: translateX(-50%); }  /* slide left:  NO fills  */
 
   .vote-half {
-    flex: 0 0 50%;
+    flex: 0 0 50%;   /* each half = 50% of 200% track = 100% of container */
     height: 100%;
     display: flex;
     align-items: center;
@@ -570,7 +575,7 @@
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────────────────
-const BACKEND = "https://have-you-ever-backend.onrender.com"; // ← replace with your Render URL
+const BACKEND = "https://your-app.onrender.com"; // ← replace with your Render URL
 
 // ── STATE ──────────────────────────────────────────────────────────────────
 const socket = io(BACKEND, { transports: ["websocket", "polling"] });
