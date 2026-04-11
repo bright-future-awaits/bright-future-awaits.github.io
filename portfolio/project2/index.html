@@ -15,6 +15,8 @@
     --border: #222;
     --accent: #e8ff47;
     --accent2: #ff4d6d;
+    --green: #3ddc84;
+    --red: #ff4d6d;
     --text: #f0f0f0;
     --muted: #555;
     --radius: 4px;
@@ -38,7 +40,7 @@
     content: "";
     position: fixed;
     inset: 0;
-    background: 
+    background:
       radial-gradient(circle at 20% 20%, rgba(232,255,71,0.04) 0%, transparent 50%),
       radial-gradient(circle at 80% 80%, rgba(255,77,109,0.04) 0%, transparent 50%);
     pointer-events: none;
@@ -47,15 +49,14 @@
   .screen { display: none; width: 100%; max-width: 480px; }
   .screen.active { display: flex; flex-direction: column; gap: 16px; }
 
+  /* ── TYPOGRAPHY ── */
   .logo {
     font-family: 'Bebas Neue', sans-serif;
     font-size: clamp(3rem, 12vw, 5.5rem);
     letter-spacing: 0.05em;
     line-height: 1;
     color: var(--accent);
-    text-transform: uppercase;
   }
-
   .logo span { color: var(--accent2); }
 
   .tagline {
@@ -66,6 +67,7 @@
     margin-top: -8px;
   }
 
+  /* ── CARDS / INPUTS ── */
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -96,11 +98,10 @@
     width: 100%;
     letter-spacing: 0.05em;
   }
-
   input::placeholder { color: var(--muted); }
-
   input:focus { border-color: var(--accent); }
 
+  /* ── BUTTONS ── */
   .btn {
     background: var(--accent);
     border: none;
@@ -114,7 +115,6 @@
     transition: all 0.15s ease;
     width: 100%;
   }
-
   .btn:hover { background: #f5ff70; transform: translateY(-1px); }
   .btn:active { transform: translateY(0); }
 
@@ -123,19 +123,29 @@
     border: 1px solid var(--border);
     color: var(--text);
   }
+  .btn-ghost:hover { background: #1a1a1a; }
 
-  .btn-ghost:hover { background: var(--border); background: #1a1a1a; }
-
-  .btn-red { background: var(--accent2); }
+  .btn-red { background: var(--accent2); color: #fff; }
   .btn-red:hover { background: #ff6b84; }
 
-  .divider {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 4px 0;
+  .btn-sm {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    padding: 8px 14px;
+    transition: all 0.15s ease;
   }
+  .btn-sm:hover { color: var(--text); border-color: #444; }
 
-  /* LOBBY */
+  .host-actions { display: flex; gap: 8px; }
+  .host-actions .btn { flex: 1; }
+
+  /* ── LOBBY ── */
   .room-id-display {
     background: var(--bg);
     border: 1px solid var(--border);
@@ -143,7 +153,6 @@
     padding: 16px;
     text-align: center;
   }
-
   .room-id-display .code {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 3rem;
@@ -151,11 +160,8 @@
     color: var(--accent);
   }
 
-  .player-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
+  /* ── PLAYER LIST (lobby + game) ── */
+  .player-list { display: flex; flex-direction: column; gap: 6px; }
 
   .player-item {
     display: flex;
@@ -168,13 +174,15 @@
     font-size: 13px;
   }
 
-  .player-item .dot {
-    width: 6px;
-    height: 6px;
+  .player-dot {
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
-    background: var(--accent);
     flex-shrink: 0;
+    transition: background 0.3s;
   }
+  .player-dot.online  { background: var(--green); }
+  .player-dot.offline { background: var(--muted); }
 
   .host-badge {
     margin-left: auto;
@@ -184,139 +192,7 @@
     text-transform: uppercase;
   }
 
-  /* GAME */
-  .question-num {
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: var(--muted);
-    text-transform: uppercase;
-  }
-
-  .question-text {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(1.8rem, 6vw, 2.8rem);
-    line-height: 1.1;
-    letter-spacing: 0.04em;
-  }
-
-  .vote-btns {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 4px;
-  }
-
-  .vote-btn {
-    border: 2px solid var(--border);
-    border-radius: var(--radius);
-    cursor: pointer;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 28px;
-    letter-spacing: 0.1em;
-    padding: 28px 10px;
-    text-align: center;
-    transition: all 0.15s ease;
-    background: var(--surface);
-    color: var(--text);
-  }
-
-  .vote-btn:hover { transform: scale(1.02); }
-  .vote-btn.yes:hover { border-color: var(--accent); color: var(--accent); }
-  .vote-btn.no:hover { border-color: var(--accent2); color: var(--accent2); }
-  .vote-btn.selected.yes { border-color: var(--accent); color: var(--accent); background: rgba(232,255,71,0.07); }
-  .vote-btn.selected.no { border-color: var(--accent2); color: var(--accent2); background: rgba(255,77,109,0.07); }
-  .vote-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
-
-  .waiting-text {
-    font-size: 12px;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-    text-align: center;
-    padding: 10px 0;
-  }
-
-  /* RESULTS BAR */
-  .result-bar-wrap {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-  }
-
-  .result-label {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 10px;
-    letter-spacing: 0.1em;
-  }
-
-  .result-label .big {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 2.4rem;
-    color: var(--accent);
-    line-height: 1;
-  }
-
-  .bar-track {
-    background: var(--bg);
-    border-radius: 2px;
-    height: 8px;
-    overflow: hidden;
-  }
-
-  .bar-fill {
-    background: var(--accent);
-    height: 100%;
-    border-radius: 2px;
-    transition: width 0.6s cubic-bezier(0.25, 1, 0.5, 1);
-  }
-
-  /* FINAL */
-  .final-list { display: flex; flex-direction: column; gap: 8px; }
-
-  .final-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    font-size: 13px;
-    gap: 10px;
-  }
-
-  .final-item .q { flex: 1; color: var(--muted); font-size: 11px; line-height: 1.4; }
-  .final-item .pct {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.6rem;
-    color: var(--accent);
-    flex-shrink: 0;
-  }
-
-  .error-msg {
-    font-size: 12px;
-    color: var(--accent2);
-    letter-spacing: 0.05em;
-    min-height: 16px;
-  }
-
-  .status-bar {
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-    text-align: center;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  .pulsing { animation: pulse 1.5s ease infinite; }
-
+  /* ── TOGGLE ── */
   .toggle-row {
     display: flex;
     align-items: center;
@@ -336,9 +212,7 @@
     height: 22px;
     flex-shrink: 0;
   }
-
   .toggle-switch input { opacity: 0; width: 0; height: 0; }
-
   .toggle-track {
     position: absolute;
     inset: 0;
@@ -347,23 +221,19 @@
     cursor: pointer;
     transition: background 0.2s;
   }
-
   .toggle-track::before {
     content: "";
     position: absolute;
-    left: 3px;
-    top: 3px;
-    width: 16px;
-    height: 16px;
+    left: 3px; top: 3px;
+    width: 16px; height: 16px;
     background: var(--muted);
     border-radius: 50%;
     transition: transform 0.2s, background 0.2s;
   }
-
   .toggle-switch input:checked + .toggle-track { background: rgba(232,255,71,0.2); }
   .toggle-switch input:checked + .toggle-track::before { transform: translateX(18px); background: var(--accent); }
 
-  /* GAME BANNER */
+  /* ── GAME BANNER ── */
   .game-banner {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 11px;
@@ -373,33 +243,226 @@
     text-align: center;
     padding-bottom: 4px;
     border-bottom: 1px solid var(--border);
-    margin-bottom: 4px;
   }
-
   .game-banner span { color: var(--accent); }
 
-  .btn-sm {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--muted);
-    cursor: pointer;
-    font-family: 'DM Mono', monospace;
+  .question-num {
     font-size: 11px;
-    letter-spacing: 0.1em;
-    padding: 8px 14px;
-    transition: all 0.15s ease;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
   }
 
-  .btn-sm:hover { color: var(--text); border-color: #444; }
+  .question-text {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(1.8rem, 6vw, 2.8rem);
+    line-height: 1.1;
+    letter-spacing: 0.04em;
+  }
 
-  .host-actions { display: flex; gap: 8px; }
-  .host-actions .btn { flex: 1; }
+  /* ── VOTE BUTTONS — sliding mechanic ── */
+  .vote-area {
+    position: relative;
+    height: 100px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-top: 4px;
+  }
+
+  /* The two halves sit side by side inside a 200%-wide container */
+  .vote-track {
+    position: absolute;
+    top: 0; left: 0;
+    width: 200%;
+    height: 100%;
+    display: flex;
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Default: show both (split view) */
+  .vote-track { transform: translateX(0); }
+  /* Voted NO  → slide right so NO fills */
+  .vote-track.voted-no  { transform: translateX(-50%); }
+  /* Voted YES → no slide (YES already fills left half which we expand) */
+  /* Actually: YES is left, NO is right. voted-yes → stay, voted-no → shift left */
+
+  .vote-half {
+    flex: 0 0 50%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 0.12em;
+    border: 2px solid var(--border);
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    user-select: none;
+  }
+
+  /* NO is on the left, YES on the right — swapped per request */
+  .vote-half.no  { background: var(--surface); color: var(--red);   border-color: var(--border); }
+  .vote-half.yes { background: var(--surface); color: var(--green);  border-color: var(--border); }
+
+  .vote-half.no:hover  { background: rgba(255,77,109,0.08);  border-color: var(--red); }
+  .vote-half.yes:hover { background: rgba(61,220,132,0.08);  border-color: var(--green); }
+
+  /* When voted YES: expand yes to full width (slide track right by 50%) */
+  .vote-track.voted-yes { transform: translateX(50%); }
+  /* When voted NO: slide left so no covers everything */
+  .vote-track.voted-no  { transform: translateX(-50%); }
+
+  .vote-track.voted-yes .vote-half.yes { background: rgba(61,220,132,0.15);  border-color: var(--green); }
+  .vote-track.voted-no  .vote-half.no  { background: rgba(255,77,109,0.15);  border-color: var(--red); }
+
+  .vote-area.locked .vote-half { cursor: default; }
+
+  /* ── VOTE COUNT INDICATOR ── */
+  .vote-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  .vote-pip-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .vote-pip {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.2s;
+  }
+  .vote-pip.done { background: var(--accent); }
+
+  /* ── RESULT SECTION ── */
+  /* Wrap result + next-btn in one container that fades/slides together */
+  .result-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events: none;
+  }
+  .result-block.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .result-bar-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .result-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    letter-spacing: 0.1em;
+  }
+  .result-label .big {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.4rem;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .bar-track {
+    background: var(--bg);
+    border-radius: 2px;
+    height: 8px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    background: var(--accent);
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  .waiting-text {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-align: center;
+    padding: 10px 0;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .pulsing { animation: pulse 1.5s ease infinite; }
+
+  /* ── FINAL SCREEN ── */
+  .final-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .score-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+  }
+  .score-rank {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    color: var(--muted);
+    width: 28px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .score-rank.gold   { color: #ffd700; }
+  .score-rank.silver { color: #c0c0c0; }
+  .score-rank.bronze { color: #cd7f32; }
+  .score-name { flex: 1; }
+  .score-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    color: var(--accent);
+  }
+  .score-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
+
+  /* misc */
+  .error-msg {
+    font-size: 12px;
+    color: var(--accent2);
+    letter-spacing: 0.05em;
+    min-height: 16px;
+  }
+  .status-bar {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-align: center;
+  }
+  .game-player-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .game-player-panel .card-label { margin-bottom: 2px; }
+  .game-player-row {
+    display: flex; align-items: center; gap: 8px; font-size: 12px;
+  }
 </style>
 </head>
 <body>
 
-<!-- HOME -->
+<!-- ── HOME ── -->
 <div class="screen active" id="screen-home">
   <div class="logo">Have<br>You<br><span>Ever</span></div>
   <div class="tagline">Multiplayer · Real-time · Uncensored</div>
@@ -413,7 +476,7 @@
   <div class="card">
     <div class="card-label">Join a room</div>
     <input id="join-name" type="text" placeholder="Your name" maxlength="20">
-    <input id="join-code" type="text" placeholder="Room code" maxlength="6" style="text-transform:uppercase">
+    <input id="join-code" type="text" placeholder="Room code" maxlength="4" style="text-transform:uppercase">
     <button class="btn btn-ghost" onclick="joinRoom()">Join Room</button>
   </div>
 
@@ -421,7 +484,7 @@
   <div class="status-bar" id="conn-status">Connecting…</div>
 </div>
 
-<!-- LOBBY -->
+<!-- ── LOBBY ── -->
 <div class="screen" id="screen-lobby">
   <div class="logo" style="font-size:2.5rem">Lobby</div>
 
@@ -436,7 +499,7 @@
   </div>
 
   <div class="toggle-row" id="order-toggle-row" style="display:none">
-    <span>Question order</span>
+    <span>Questions</span>
     <div style="display:flex;align-items:center;gap:10px">
       <span id="order-label" style="color:var(--text);font-size:11px">In Order</span>
       <label class="toggle-switch">
@@ -445,83 +508,101 @@
       </label>
     </div>
   </div>
+
   <button class="btn" id="start-btn" onclick="startGame()" style="display:none">Start Game</button>
   <div class="waiting-text pulsing" id="wait-msg">Waiting for host to start…</div>
   <button class="btn-sm" onclick="leaveRoom()" style="align-self:center;margin-top:4px">Leave Room</button>
   <div class="error-msg" id="lobby-error"></div>
 </div>
 
-<!-- GAME -->
+<!-- ── GAME ── -->
 <div class="screen" id="screen-game">
   <div class="game-banner">Have You <span>Ever…</span></div>
 
   <div class="question-num" id="q-num">Question 1 / 100</div>
   <div class="question-text" id="q-text">Loading…</div>
 
-  <div class="vote-btns">
-    <div class="vote-btn yes" id="btn-yes" onclick="vote('yes')">YES</div>
-    <div class="vote-btn no" id="btn-no" onclick="vote('no')">NO</div>
+  <!-- Sliding vote buttons: NO on left (red), YES on right (green) -->
+  <div class="vote-area" id="vote-area">
+    <div class="vote-track" id="vote-track">
+      <div class="vote-half no"  id="btn-no"  onclick="vote('no')">NO</div>
+      <div class="vote-half yes" id="btn-yes" onclick="vote('yes')">YES</div>
+    </div>
   </div>
 
-  <div class="waiting-text pulsing" id="vote-wait" style="display:none">Waiting for others…</div>
+  <!-- Vote progress indicator -->
+  <div class="vote-progress" id="vote-progress">
+    <span id="vote-count-text">0/0 answered</span>
+    <div class="vote-pip-row" id="vote-pips"></div>
+  </div>
 
-  <div id="result-section" style="display:none">
+  <!-- Result block (fades in/out as one unit) -->
+  <div class="result-block" id="result-block">
     <div class="result-bar-wrap">
       <div class="result-label">
         <div><div class="big" id="res-pct">0%</div><div>said YES</div></div>
-        <div style="text-align:right"><div id="res-count" style="font-size:1.5rem;font-family:'Bebas Neue',sans-serif;color:var(--text)">0/0</div><div>players</div></div>
+        <div style="text-align:right">
+          <div id="res-count" style="font-size:1.5rem;font-family:'Bebas Neue',sans-serif;color:var(--text)">0/0</div>
+          <div>players</div>
+        </div>
       </div>
       <div class="bar-track"><div class="bar-fill" id="bar-fill" style="width:0%"></div></div>
     </div>
-    <div class="host-actions" id="host-next-actions" style="display:none;margin-top:10px">
+
+    <!-- Host controls inside result-block so they animate together -->
+    <div class="host-actions" id="host-next-actions" style="display:none">
       <button class="btn" id="next-btn" onclick="nextRound()" style="display:none">Next Question</button>
       <button class="btn btn-red" id="finish-btn" onclick="nextRound()" style="display:none">See Results</button>
     </div>
     <div class="waiting-text pulsing" id="next-wait" style="display:none">Waiting for host…</div>
   </div>
 
-  <div style="display:flex;gap:8px;margin-top:8px">
+  <!-- Player connection panel -->
+  <div class="game-player-panel">
+    <div class="card-label">Players</div>
+    <div id="game-player-list"></div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-top:4px">
     <button class="btn-sm" id="skip-btn" onclick="skipQuestion()" style="display:none">Skip</button>
     <button class="btn-sm" onclick="leaveRoom()">Leave Room</button>
   </div>
 </div>
 
-<!-- FINAL -->
+<!-- ── FINAL ── -->
 <div class="screen" id="screen-final">
-  <div class="logo" style="font-size:2.5rem">Results</div>
+  <div class="logo" style="font-size:2.5rem">Scores</div>
   <div class="final-list" id="final-list"></div>
   <button class="btn btn-ghost" onclick="goHome()" style="margin-top:8px">Play Again</button>
 </div>
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────────────────
-const BACKEND = "https://have-you-ever-backend.onrender.com"; // ← replace after deploying backend
+const BACKEND = "https://your-app.onrender.com"; // ← replace with your Render URL
 
-// ── SOCKET ──────────────────────────────────────────────────────────────────
+// ── STATE ──────────────────────────────────────────────────────────────────
 const socket = io(BACKEND, { transports: ["websocket", "polling"] });
 
 let myName = "";
 let myRoom = "";
 let isHost = false;
-let voted = false;
-let finalResults = [];
+let currentVote = null;   // 'yes' | 'no' | null
+let totalPlayers = 0;
 
-// ── CONNECTION ───────────────────────────────────────────────────────────────
+// ── CONNECTION ─────────────────────────────────────────────────────────────
 socket.on("connect", () => {
   document.getElementById("conn-status").textContent = "Connected ✓";
-  document.getElementById("conn-status").style.color = "#4caf50";
+  document.getElementById("conn-status").style.color = "#3ddc84";
 });
-
 socket.on("connect_error", () => {
   document.getElementById("conn-status").textContent = "Connection failed — check backend URL";
   document.getElementById("conn-status").style.color = "var(--accent2)";
 });
-
 socket.on("disconnect", () => {
   document.getElementById("conn-status").textContent = "Disconnected";
 });
 
-// ── SOCKET EVENTS ────────────────────────────────────────────────────────────
+// ── ROOM EVENTS ────────────────────────────────────────────────────────────
 socket.on("room_created", ({ roomId }) => {
   myRoom = roomId;
   isHost = true;
@@ -536,32 +617,19 @@ socket.on("room_joined", ({ roomId }) => {
 socket.on("joined_midgame", ({ roomId, questionIndex, question, total, state, lastResult }) => {
   myRoom = roomId;
   isHost = false;
-  voted = false;
+  currentVote = null;
 
-  document.getElementById("q-num").textContent = `Question ${questionIndex + 1} / ${total}`;
-  document.getElementById("q-text").textContent = question;
+  setQuestion(question, questionIndex, total);
+  resetVoteUI();
+  hideResult();
 
-  const btnY = document.getElementById("btn-yes");
-  const btnN = document.getElementById("btn-no");
-  btnY.classList.remove("selected");
-  btnN.classList.remove("selected");
-  btnY.removeAttribute("disabled");
-  btnN.removeAttribute("disabled");
   document.getElementById("skip-btn").style.display = "none";
-  document.getElementById("vote-wait").style.display = "none";
-  document.getElementById("result-section").style.display = "none";
-  document.getElementById("host-next-actions").style.display = "none";
+  document.getElementById("vote-progress").style.display = "flex";
 
   if (state === "result" && lastResult) {
-    const pct = lastResult.total > 0 ? Math.round((lastResult.yes / lastResult.total) * 100) : 0;
-    document.getElementById("res-pct").textContent = pct + "%";
-    document.getElementById("res-count").textContent = `${lastResult.yes}/${lastResult.total}`;
-    document.getElementById("bar-fill").style.width = pct + "%";
-    document.getElementById("result-section").style.display = "block";
-    document.getElementById("next-wait").style.display = "block";
-    voted = true;
-    btnY.setAttribute("disabled", true);
-    btnN.setAttribute("disabled", true);
+    // Show result; lock voting
+    showResult(lastResult.yes, lastResult.total, lastResult.isLast, false);
+    lockVoteArea();
   }
 
   showScreen("screen-game");
@@ -573,15 +641,43 @@ socket.on("error", ({ message }) => {
 });
 
 socket.on("room_update", ({ players }) => {
+  totalPlayers = players.length;
+  // Lobby player list
   document.getElementById("player-count").textContent = players.length;
-  const list = document.getElementById("player-list");
-  list.innerHTML = players.map(p => `
+  document.getElementById("player-list").innerHTML = players.map(p => `
     <div class="player-item">
-      <div class="dot"></div>
-      <span>${p.name}</span>
+      <div class="player-dot ${p.connected ? 'online' : 'offline'}"></div>
+      <span style="${p.connected ? '' : 'opacity:0.45'}">${p.name}</span>
       ${p.isHost ? '<span class="host-badge">host</span>' : ''}
     </div>
   `).join("");
+
+  // Game player panel
+  document.getElementById("game-player-list").innerHTML = players.map(p => `
+    <div class="game-player-row">
+      <div class="player-dot ${p.connected ? 'online' : 'offline'}"></div>
+      <span style="${p.connected ? '' : 'opacity:0.45;text-decoration:line-through'}">${p.name}</span>
+      ${p.isHost ? '<span style="margin-left:6px;font-size:9px;color:var(--accent2);letter-spacing:0.12em">HOST</span>' : ''}
+    </div>
+  `).join("");
+
+  // If I just became host (promoted)
+  const me = players.find(p => p.id === socket.id);
+  if (me && me.isHost && !isHost) {
+    isHost = true;
+    // Show host controls if we're in result state
+    const rb = document.getElementById("result-block");
+    if (rb.classList.contains("visible")) {
+      document.getElementById("host-next-actions").style.display = "flex";
+      document.getElementById("next-wait").style.display = "none";
+      // Which button? We can't know isLast from here easily; show next-btn and let next event clarify
+      document.getElementById("next-btn").style.display = "block";
+    }
+    document.getElementById("skip-btn").style.display = "block";
+  }
+
+  // Rebuild pip count with current total
+  rebuildPips(totalPlayers);
 });
 
 socket.on("game_started", () => {
@@ -589,48 +685,33 @@ socket.on("game_started", () => {
 });
 
 socket.on("new_question", ({ question, index, total }) => {
-  voted = false;
-  document.getElementById("q-num").textContent = `Question ${index + 1} / ${total}`;
-  document.getElementById("q-text").textContent = question;
-
-  const btnY = document.getElementById("btn-yes");
-  const btnN = document.getElementById("btn-no");
-  btnY.classList.remove("selected");
-  btnN.classList.remove("selected");
-  btnY.removeAttribute("disabled");
-  btnN.removeAttribute("disabled");
-
-  document.getElementById("vote-wait").style.display = "none";
-  document.getElementById("result-section").style.display = "none";
+  currentVote = null;
+  setQuestion(question, index, total);
+  resetVoteUI();
+  hideResult();
   document.getElementById("skip-btn").style.display = isHost ? "inline-block" : "none";
+  document.getElementById("vote-progress").style.display = "flex";
+  rebuildPips(totalPlayers);
+  updatePips(0);
+});
+
+socket.on("vote_count", ({ voted, total }) => {
+  totalPlayers = total;
+  rebuildPips(total);
+  updatePips(voted);
+  document.getElementById("vote-count-text").textContent = `${voted}/${total} answered`;
 });
 
 socket.on("round_result", ({ yes, total, isLast }) => {
-  const pct = total > 0 ? Math.round((yes / total) * 100) : 0;
-
-  document.getElementById("res-pct").textContent = pct + "%";
-  document.getElementById("res-count").textContent = `${yes}/${total}`;
-  document.getElementById("bar-fill").style.width = pct + "%";
-  document.getElementById("vote-wait").style.display = "none";
-  document.getElementById("result-section").style.display = "block";
   document.getElementById("skip-btn").style.display = "none";
-
-  if (isHost) {
-    document.getElementById("host-next-actions").style.display = "flex";
-    document.getElementById(isLast ? "finish-btn" : "next-btn").style.display = "block";
-    document.getElementById("next-wait").style.display = "none";
-  } else {
-    document.getElementById("host-next-actions").style.display = "none";
-    document.getElementById("next-wait").style.display = "block";
-  }
+  showResult(yes, total, isLast, isHost);
 });
 
-socket.on("game_over", ({ results }) => {
-  finalResults = results;
-  showFinal(results);
+socket.on("game_over", ({ scores }) => {
+  showFinal(scores);
 });
 
-// ── ACTIONS ──────────────────────────────────────────────────────────────────
+// ── ACTIONS ─────────────────────────────────────────────────────────────────
 function createRoom() {
   const name = document.getElementById("host-name").value.trim();
   if (!name) return setError("home-error", "Enter your name");
@@ -655,19 +736,24 @@ function startGame() {
 
 function updateOrderLabel() {
   const random = document.getElementById("random-toggle").checked;
-  document.getElementById("order-label").textContent = random ? "Random" : "In Order";
+  document.getElementById("order-label").textContent = random ? "Shuffle" : "In Order";
 }
 
 function vote(choice) {
-  if (voted) return;
-  voted = true;
+  const area = document.getElementById("vote-area");
+  if (area.classList.contains("locked")) return;
 
-  document.getElementById("btn-yes").setAttribute("disabled", true);
-  document.getElementById("btn-no").setAttribute("disabled", true);
-  document.getElementById("btn-" + choice).classList.add("selected");
-  document.getElementById("vote-wait").style.display = "block";
-
-  socket.emit("submit_vote", { roomId: myRoom, vote: choice });
+  if (currentVote === choice) {
+    // Deselect — return to center
+    currentVote = null;
+    document.getElementById("vote-track").className = "vote-track";
+    socket.emit("submit_vote", { roomId: myRoom, vote: choice }); // server toggles to null
+  } else {
+    currentVote = choice;
+    const track = document.getElementById("vote-track");
+    track.className = "vote-track " + (choice === "yes" ? "voted-yes" : "voted-no");
+    socket.emit("submit_vote", { roomId: myRoom, vote: choice });
+  }
 }
 
 function nextRound() {
@@ -684,14 +770,14 @@ function leaveRoom() {
   socket.emit("leave_room", { roomId: myRoom });
   myRoom = "";
   isHost = false;
-  voted = false;
+  currentVote = null;
   showScreen("screen-home");
 }
 
 function goHome() {
   myRoom = "";
   isHost = false;
-  voted = false;
+  currentVote = null;
   document.getElementById("host-name").value = "";
   document.getElementById("join-name").value = "";
   document.getElementById("join-code").value = "";
@@ -712,15 +798,88 @@ function showLobby() {
   showScreen("screen-lobby");
 }
 
-function showFinal(results) {
+function setQuestion(question, index, total) {
+  document.getElementById("q-num").textContent = `Question ${index + 1} / ${total}`;
+  document.getElementById("q-text").textContent = question;
+}
+
+function resetVoteUI() {
+  document.getElementById("vote-track").className = "vote-track";
+  document.getElementById("vote-area").classList.remove("locked");
+}
+
+function lockVoteArea() {
+  document.getElementById("vote-area").classList.add("locked");
+}
+
+function hideResult() {
+  const rb = document.getElementById("result-block");
+  rb.classList.remove("visible");
+  document.getElementById("host-next-actions").style.display = "none";
+  document.getElementById("next-btn").style.display = "none";
+  document.getElementById("finish-btn").style.display = "none";
+  document.getElementById("next-wait").style.display = "none";
+}
+
+function showResult(yes, total, isLast, hostControls) {
+  const pct = total > 0 ? Math.round((yes / total) * 100) : 0;
+  document.getElementById("res-pct").textContent = pct + "%";
+  document.getElementById("res-count").textContent = `${yes}/${total}`;
+
+  // Animate bar after brief frame
+  requestAnimationFrame(() => {
+    document.getElementById("bar-fill").style.width = pct + "%";
+  });
+
+  if (hostControls) {
+    document.getElementById("host-next-actions").style.display = "flex";
+    document.getElementById(isLast ? "finish-btn" : "next-btn").style.display = "block";
+    document.getElementById("next-wait").style.display = "none";
+  } else {
+    document.getElementById("host-next-actions").style.display = "none";
+    document.getElementById("next-wait").style.display = "block";
+  }
+
+  // Lock vote buttons
+  lockVoteArea();
+
+  // Fade in the whole result block together
+  requestAnimationFrame(() => {
+    document.getElementById("result-block").classList.add("visible");
+  });
+}
+
+// Vote pip helpers
+function rebuildPips(count) {
+  const container = document.getElementById("vote-pips");
+  container.innerHTML = "";
+  for (let i = 0; i < count; i++) {
+    const pip = document.createElement("div");
+    pip.className = "vote-pip";
+    container.appendChild(pip);
+  }
+}
+
+function updatePips(voted) {
+  const pips = document.querySelectorAll(".vote-pip");
+  pips.forEach((pip, i) => {
+    pip.classList.toggle("done", i < voted);
+  });
+}
+
+function showFinal(scores) {
   const list = document.getElementById("final-list");
-  list.innerHTML = results.map(r => {
-    const pct = r.total > 0 ? Math.round((r.yes / r.total) * 100) : 0;
-    return `<div class="final-item">
-      <div class="q">${r.question}</div>
-      <div class="pct">${pct}%</div>
-    </div>`;
-  }).join("");
+  const rankClass = (i) => i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "";
+  list.innerHTML = scores.map((s, i) => `
+    <div class="score-item">
+      <div class="score-rank ${rankClass(i)}">${i + 1}</div>
+      <div class="score-name">${s.name}</div>
+      <div>
+        <div class="score-val">${s.score}</div>
+        <div class="score-sub">${s.yesCount} yes</div>
+      </div>
+    </div>
+  `).join("");
   showScreen("screen-final");
 }
 
