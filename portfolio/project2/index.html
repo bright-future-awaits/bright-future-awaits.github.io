@@ -260,36 +260,13 @@
     letter-spacing: 0.04em;
   }
 
-  /* ── VOTE BUTTONS — sliding mechanic ── */
-  /*
-    .vote-area is the clipping window (100% wide).
-    .vote-track is 200% wide (2 × container).
-    Each .vote-half is 50% of the track = 100% of the container.
-    Default: track at translateX(0)  → YES fills left half of window, NO fills right.
-    Voted YES: translateX(0) already shows YES — no move needed; actually we need
-               the track to start offset so both halves show equally.
-
-    Corrected default: start at translateX(-50%) of track width.
-    But translateX % is relative to the ELEMENT itself (200% wide).
-    50% of 200%-wide track = 100% of container. That would hide YES entirely.
-
-    Use left offset instead:
-    - Track starts at left: -50% of container (i.e. left: -50%).
-      This shifts the 200%-wide track so its midpoint aligns with the container center,
-      showing the right half of YES and the left half of NO equally.
-    - voted-yes: translateX(50% of container) = right-shift by half container.
-      Since track is 200% wide, 50% of container = 25% of track.
-      Use a CSS custom property or just calc.
-
-    Simplest correct approach: use left:-50% on track + translateX in container units via margin trick.
-    OR: just use a wrapper that is 200% wide, and translate in px via JS. 
-    
-    CLEANEST: Track = 200% wide, left = 0, default translateX = -25% (of itself = -50% of container).
-    voted-yes: translateX(0)    → track left edge at container left → YES fills container.
-    voted-no:  translateX(-50%) → track shifts left by 100% of container → NO fills container.
+  /* ── VOTE BUTTONS ──
+     Track: 100% wide, flex row.
+     Default: each half is flex 1 (50% each).
+     Voted: selected half grows to flex 2 (100%), other shrinks to flex 0 (0%).
+     No translateX needed — pure flex width transition.
   */
   .vote-area {
-    position: relative;
     height: 100px;
     border-radius: var(--radius);
     overflow: hidden;
@@ -297,22 +274,13 @@
   }
 
   .vote-track {
-    position: absolute;
-    top: 0; left: 0;
-    width: 200%;
+    width: 100%;
     height: 100%;
     display: flex;
-    transform: translateX(-25%); /* -25% of 200% wide = -50% of container: centered split */
-    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* voted-yes: shift right so YES (left panel) fills container */
-  .vote-track.voted-yes { transform: translateX(0); }
-  /* voted-no: shift left so NO (right panel) fills container */
-  .vote-track.voted-no  { transform: translateX(-50%); }
-
   .vote-half {
-    flex: 0 0 50%; /* 50% of 200% track = 100% of container */
+    flex: 1;
     height: 100%;
     display: flex;
     align-items: center;
@@ -322,8 +290,11 @@
     font-size: 32px;
     letter-spacing: 0.12em;
     border: 2px solid var(--border);
-    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    transition: flex 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                background 0.2s, color 0.2s, border-color 0.2s;
     user-select: none;
+    overflow: hidden;
+    white-space: nowrap;
   }
 
   .vote-half.yes { background: var(--surface); color: var(--green); border-color: var(--border); }
@@ -332,8 +303,13 @@
   .vote-half.yes:hover { background: rgba(61,220,132,0.08);  border-color: var(--green); }
   .vote-half.no:hover  { background: rgba(255,77,109,0.08);  border-color: var(--red); }
 
-  .vote-track.voted-yes .vote-half.yes { background: rgba(61,220,132,0.18); border-color: var(--green); }
-  .vote-track.voted-no  .vote-half.no  { background: rgba(255,77,109,0.18); border-color: var(--red); }
+  /* voted YES: YES expands to full, NO collapses to nothing */
+  .vote-track.voted-yes .vote-half.yes { flex: 2; background: rgba(61,220,132,0.18); border-color: var(--green); }
+  .vote-track.voted-yes .vote-half.no  { flex: 0; }
+
+  /* voted NO: NO expands to full, YES collapses to nothing */
+  .vote-track.voted-no .vote-half.no  { flex: 2; background: rgba(255,77,109,0.18); border-color: var(--red); }
+  .vote-track.voted-no .vote-half.yes { flex: 0; }
 
   .vote-area.locked .vote-half { cursor: default; }
 
@@ -575,7 +551,10 @@
 
   <!-- Player connection panel -->
   <div class="game-player-panel">
-    <div class="card-label">Players</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+      <div class="card-label">Players</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:0.25em;color:var(--accent)" id="game-room-code"></div>
+    </div>
     <div id="game-player-list"></div>
   </div>
 
@@ -594,7 +573,7 @@
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────────────────
-const BACKEND = "https://have-you-ever-backend.onrender.com/"; // ← replace with your Render URL
+const BACKEND = "https://your-app.onrender.com"; // ← replace with your Render URL
 
 // ── STATE ──────────────────────────────────────────────────────────────────
 const socket = io(BACKEND, { transports: ["websocket", "polling"] });
@@ -648,6 +627,7 @@ socket.on("joined_midgame", ({ roomId, questionIndex, question, total, state, la
     lockVoteArea();
   }
 
+  document.getElementById("game-room-code").textContent = myRoom;
   showScreen("screen-game");
 });
 
@@ -697,6 +677,7 @@ socket.on("room_update", ({ players }) => {
 });
 
 socket.on("game_started", () => {
+  document.getElementById("game-room-code").textContent = myRoom;
   showScreen("screen-game");
 });
 
