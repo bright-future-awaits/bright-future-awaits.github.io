@@ -269,22 +269,23 @@
     margin-top: 4px;
   }
 
-  /* The two halves sit side by side inside a 200%-wide container */
+  /* Track is 200% wide; default centered so both halves show at 50% each */
   .vote-track {
     position: absolute;
-    top: 0; left: 0;
+    top: 0; left: -50%;
     width: 200%;
     height: 100%;
     display: flex;
     transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Default: show both (split view) */
-  .vote-track { transform: translateX(0); }
-  /* Voted NO  → slide right so NO fills */
-  .vote-track.voted-no  { transform: translateX(-50%); }
-  /* Voted YES → no slide (YES already fills left half which we expand) */
-  /* Actually: YES is left, NO is right. voted-yes → stay, voted-no → shift left */
+  /* Order: YES (left half) | NO (right half) */
+  /* Default: both visible — translateX(0) shows the center of the 200% track */
+  .vote-track               { transform: translateX(0); }
+  /* Voted YES: slide track right so YES takes full width */
+  .vote-track.voted-yes     { transform: translateX(25%); }
+  /* Voted NO: slide track left so NO takes full width */
+  .vote-track.voted-no      { transform: translateX(-25%); }
 
   .vote-half {
     flex: 0 0 50%;
@@ -301,20 +302,14 @@
     user-select: none;
   }
 
-  /* NO is on the left, YES on the right — swapped per request */
+  .vote-half.yes { background: var(--surface); color: var(--green); border-color: var(--border); }
   .vote-half.no  { background: var(--surface); color: var(--red);   border-color: var(--border); }
-  .vote-half.yes { background: var(--surface); color: var(--green);  border-color: var(--border); }
 
-  .vote-half.no:hover  { background: rgba(255,77,109,0.08);  border-color: var(--red); }
   .vote-half.yes:hover { background: rgba(61,220,132,0.08);  border-color: var(--green); }
+  .vote-half.no:hover  { background: rgba(255,77,109,0.08);  border-color: var(--red); }
 
-  /* When voted YES: expand yes to full width (slide track right by 50%) */
-  .vote-track.voted-yes { transform: translateX(50%); }
-  /* When voted NO: slide left so no covers everything */
-  .vote-track.voted-no  { transform: translateX(-50%); }
-
-  .vote-track.voted-yes .vote-half.yes { background: rgba(61,220,132,0.15);  border-color: var(--green); }
-  .vote-track.voted-no  .vote-half.no  { background: rgba(255,77,109,0.15);  border-color: var(--red); }
+  .vote-track.voted-yes .vote-half.yes { background: rgba(61,220,132,0.18); border-color: var(--green); }
+  .vote-track.voted-no  .vote-half.no  { background: rgba(255,77,109,0.18); border-color: var(--red); }
 
   .vote-area.locked .vote-half { cursor: default; }
 
@@ -499,14 +494,11 @@
   </div>
 
   <div class="toggle-row" id="order-toggle-row" style="display:none">
-    <span>Questions</span>
-    <div style="display:flex;align-items:center;gap:10px">
-      <span id="order-label" style="color:var(--text);font-size:11px">In Order</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="random-toggle" onchange="updateOrderLabel()">
-        <span class="toggle-track"></span>
-      </label>
-    </div>
+    <span>Shuffle</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="random-toggle">
+      <span class="toggle-track"></span>
+    </label>
   </div>
 
   <button class="btn" id="start-btn" onclick="startGame()" style="display:none">Start Game</button>
@@ -525,8 +517,8 @@
   <!-- Sliding vote buttons: NO on left (red), YES on right (green) -->
   <div class="vote-area" id="vote-area">
     <div class="vote-track" id="vote-track">
+        <div class="vote-half yes" id="btn-yes" onclick="vote('yes')">YES</div>
       <div class="vote-half no"  id="btn-no"  onclick="vote('no')">NO</div>
-      <div class="vote-half yes" id="btn-yes" onclick="vote('yes')">YES</div>
     </div>
   </div>
 
@@ -578,7 +570,7 @@
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────────────────────────
-const BACKEND = "https://have-you-ever-backend.onrender.com"; // ← replace with your Render URL
+const BACKEND = "https://your-app.onrender.com"; // ← replace with your Render URL
 
 // ── STATE ──────────────────────────────────────────────────────────────────
 const socket = io(BACKEND, { transports: ["websocket", "polling"] });
@@ -732,11 +724,6 @@ function joinRoom() {
 function startGame() {
   const randomOrder = document.getElementById("random-toggle").checked;
   socket.emit("start_game", { roomId: myRoom, randomOrder });
-}
-
-function updateOrderLabel() {
-  const random = document.getElementById("random-toggle").checked;
-  document.getElementById("order-label").textContent = random ? "Shuffle" : "In Order";
 }
 
 function vote(choice) {
