@@ -518,30 +518,15 @@
   .game-player-row {
     display: flex; align-items: center; gap: 8px; font-size: 12px;
   }
-  /* Mini tab bar inside the player panel */
-  .panel-tab-bar {
-    display: flex;
-    gap: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    margin-bottom: 4px;
-  }
-  .panel-tab-btn {
-    flex: 1;
-    background: transparent;
-    border: none;
+  .panel-section-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
     color: var(--muted);
-    cursor: pointer;
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    padding: 7px;
-    transition: all 0.15s ease;
     text-transform: uppercase;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    margin-top: 2px;
   }
-  .panel-tab-btn:not(:last-child) { border-right: 1px solid var(--border); }
-  .panel-tab-btn.active { background: var(--bg); color: var(--accent); }
   .spectator-badge {
     margin-left: auto;
     font-size: 9px;
@@ -598,7 +583,7 @@
   </div>
 
   <button class="btn" id="start-btn" onclick="startGame()" style="display:none">Start Game</button>
-  <button class="btn btn-ghost" id="spectate-btn" onclick="becomeSpectator()" style="display:none">Spectate</button>
+  <button class="btn btn-ghost" id="spectate-toggle-btn" onclick="toggleSpectate()" style="display:none">Spectate</button>
   <div class="waiting-text pulsing" id="wait-msg">Waiting for host to start…</div>
   <button class="btn-sm" onclick="leaveRoom()" style="align-self:center;margin-top:4px">Leave Room</button>
   <div class="error-msg" id="lobby-error"></div>
@@ -647,18 +632,13 @@
       <div class="card-label">Players</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:0.25em;color:var(--accent)" id="game-room-code"></div>
     </div>
-    <!-- Mini tab bar — spectators tab only shown when there are spectators -->
-    <div class="panel-tab-bar" id="panel-tab-bar" style="display:none">
-      <button class="panel-tab-btn active" id="ptab-players-btn" onclick="switchPanelTab('players')">Players</button>
-      <button class="panel-tab-btn" id="ptab-spectators-btn" onclick="switchPanelTab('spectators')">Spectators</button>
+    <div id="game-player-list"></div>
+    <!-- Spectator section — hidden when no spectators -->
+    <div id="spectator-section" style="display:none">
+      <div class="panel-section-label">Spectators</div>
+      <div id="game-spectator-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
     </div>
-    <div id="ptab-players" class="panel-tab-panel">
-      <div id="game-player-list"></div>
-    </div>
-    <div id="ptab-spectators" class="panel-tab-panel" style="display:none">
-      <div id="game-spectator-list"></div>
-    </div>
-    <!-- Spectate button — shown only to non-host non-spectators -->
+    <!-- Spectate button — shown only to non-host non-spectators during game -->
     <button class="btn-sm" id="game-spectate-btn" onclick="becomeSpectator()" style="display:none;margin-top:4px;align-self:flex-start">Spectate</button>
   </div>
 
@@ -723,12 +703,17 @@ let isSpectator   = false;
 let currentVote   = null;
 let totalPlayers  = 0;
 let gameResults   = [];
-let pendingQuestion = null;
+let pendingQuestion = null;  // new_question received while tabbed out
+let pendingResult  = null;   // round_result received while tabbed out
 
 // ── CONNECTION ───────────────────────────────────────────────────────────────
 socket.on("connect", () => {
   document.getElementById("conn-status").textContent = "Connected ✓";
   document.getElementById("conn-status").style.color = "#3ddc84";
+  // If we were in a room and got disconnected, try to rejoin
+  if (myRoom && myName) {
+    socket.emit("rejoin_room", { roomId: myRoom, name: myName, wasSpectator: isSpectator });
+  }
 });
 socket.on("connect_error", () => {
   document.getElementById("conn-status").textContent = "Connection failed — check backend URL";
@@ -742,12 +727,14 @@ socket.on("disconnect", () => {
 socket.on("room_created", ({ roomId }) => {
   myRoom = roomId;
   isHost = true;
+  isSpectator = false;
   showLobby();
 });
 
 socket.on("room_joined", ({ roomId }) => {
   myRoom = roomId;
   isHost = false;
+  isSpectator = false;  // always enter new game as a player
   showLobby();
 });
 
@@ -786,17 +773,26 @@ socket.on("error", ({ message }) => {
 socket.on("room_update", ({ players, spectators = [] }) => {
   totalPlayers = players.filter(p => p.connected).length;
 
-  // Lobby player list
+  // Lobby player list — show players and spectators together
+  const allLobbyRows = [
+    ...players.map(p => `
+      <div class="player-item">
+        <div class="player-dot ${p.connected ? 'online' : 'offline'}"></div>
+        <span style="${p.connected ? '' : 'opacity:0.45'}">${p.name}</span>
+        ${p.isHost ? '<span class="host-badge">host</span>' : ''}
+        ${!p.isHost ? '' : ''}
+      </div>`),
+    ...spectators.map(s => `
+      <div class="player-item">
+        <div class="player-dot ${s.connected ? 'online' : 'offline'}"></div>
+        <span style="${s.connected ? 'color:var(--muted)' : 'opacity:0.45;color:var(--muted)'}">${s.name}</span>
+        <span class="host-badge" style="color:var(--muted)">spectator</span>
+      </div>`)
+  ];
   document.getElementById("player-count").textContent = players.length;
-  document.getElementById("player-list").innerHTML = players.map(p => `
-    <div class="player-item">
-      <div class="player-dot ${p.connected ? 'online' : 'offline'}"></div>
-      <span style="${p.connected ? '' : 'opacity:0.45'}">${p.name}</span>
-      ${p.isHost ? '<span class="host-badge">host</span>' : ''}
-    </div>
-  `).join("");
+  document.getElementById("player-list").innerHTML = allLobbyRows.join("");
 
-  // Game player list
+  // Game player list (players only)
   document.getElementById("game-player-list").innerHTML = players.map(p => `
     <div class="game-player-row">
       <div class="player-dot ${p.connected ? 'online' : 'offline'}"></div>
@@ -805,14 +801,13 @@ socket.on("room_update", ({ players, spectators = [] }) => {
     </div>
   `).join("");
 
-  // Spectator list — show tab bar only if there are spectators
-  const hasSpectators = spectators.length > 0;
-  document.getElementById("panel-tab-bar").style.display = hasSpectators ? "flex" : "none";
+  // Spectator section — shown below players when spectators exist
+  const specSection = document.getElementById("spectator-section");
+  specSection.style.display = spectators.length > 0 ? "" : "none";
   document.getElementById("game-spectator-list").innerHTML = spectators.map(s => `
     <div class="game-player-row">
       <div class="player-dot ${s.connected ? 'online' : 'offline'}"></div>
-      <span style="${s.connected ? '' : 'opacity:0.45;text-decoration:line-through'}">${s.name}</span>
-      <span class="spectator-badge">spectator</span>
+      <span style="${s.connected ? 'color:var(--muted)' : 'opacity:0.45;color:var(--muted);text-decoration:line-through'}">${s.name}</span>
     </div>
   `).join("");
 
@@ -833,7 +828,7 @@ socket.on("room_update", ({ players, spectators = [] }) => {
     document.getElementById("game-spectate-btn").style.display = "none";
   }
 
-  // Show/hide spectate button in game: only for non-host, non-spectator players
+  // Show spectate button during game for active non-host players only
   if (!isHost && !isSpectator) {
     document.getElementById("game-spectate-btn").style.display = "inline-block";
   }
@@ -895,6 +890,10 @@ socket.on("vote_count", ({ voted, total }) => {
 socket.on("round_result", ({ yes, total, isLast }) => {
   document.getElementById("end-question-btn").style.display = "none";
   document.getElementById("skip-btn").style.display = "none";
+  if (document.hidden) {
+    pendingResult = { yes, total, isLast };
+    return;
+  }
   showResult(yes, total, isLast, isHost);
 });
 
@@ -911,14 +910,22 @@ socket.on("play_again_available", () => {
   }
 });
 
-// Server confirms we are now a spectator — hide vote UI, hide spectate buttons
+// Server confirms we are now a spectator
 socket.on("now_spectating", () => {
   isSpectator = true;
-  // Hide vote area and spectate buttons everywhere
   document.getElementById("vote-area").style.display = "none";
   document.getElementById("vote-progress").style.display = "none";
   document.getElementById("game-spectate-btn").style.display = "none";
-  document.getElementById("spectate-btn").style.display = "none";
+  // Update lobby toggle button
+  const tb = document.getElementById("spectate-toggle-btn");
+  if (tb) { tb.textContent = "Join as Player"; tb.style.display = "block"; }
+});
+
+// Server confirms we reverted to player (lobby only)
+socket.on("now_playing", () => {
+  isSpectator = false;
+  const tb = document.getElementById("spectate-toggle-btn");
+  if (tb) { tb.textContent = "Spectate"; tb.style.display = "block"; }
 });
 
 // Opt-in list changed (someone left the waiting panel)
@@ -994,7 +1001,16 @@ function endGame() {
   socket.emit("end_game", { roomId: myRoom });
 }
 
+function toggleSpectate() {
+  if (isSpectator) {
+    socket.emit("leave_spectator", { roomId: myRoom });
+  } else {
+    socket.emit("become_spectator", { roomId: myRoom });
+  }
+}
+
 function becomeSpectator() {
+  // Game-screen spectate (one-way, irreversible during game)
   socket.emit("become_spectator", { roomId: myRoom });
 }
 
@@ -1053,8 +1069,14 @@ function showLobby() {
   document.getElementById("start-btn").style.display = isHost ? "block" : "none";
   document.getElementById("order-toggle-row").style.display = isHost ? "flex" : "none";
   document.getElementById("wait-msg").style.display = isHost ? "none" : "block";
-  // Spectate button: visible to non-host, non-spectator players in lobby
-  document.getElementById("spectate-btn").style.display = (!isHost && !isSpectator) ? "block" : "none";
+  // Spectate toggle: non-host players can toggle spectator status in lobby
+  const tb = document.getElementById("spectate-toggle-btn");
+  if (!isHost) {
+    tb.style.display = "block";
+    tb.textContent = isSpectator ? "Join as Player" : "Spectate";
+  } else {
+    tb.style.display = "none";
+  }
   showScreen("screen-lobby");
 }
 
@@ -1184,14 +1206,6 @@ function switchTab(tab) {
   document.getElementById("tab-questions").classList.toggle("active", tab === "questions");
 }
 
-function switchPanelTab(tab) {
-  const showPlayers = tab === "players";
-  document.getElementById("ptab-players-btn").classList.toggle("active", showPlayers);
-  document.getElementById("ptab-spectators-btn").classList.toggle("active", !showPlayers);
-  document.getElementById("ptab-players").style.display = showPlayers ? "" : "none";
-  document.getElementById("ptab-spectators").style.display = showPlayers ? "none" : "";
-}
-
 function setError(id, msg) {
   const el = document.getElementById(id);
   if (el) { el.textContent = msg; setTimeout(() => el.textContent = "", 3000); }
@@ -1201,9 +1215,19 @@ function setError(id, msg) {
 document.fonts.ready.then(() => document.body.classList.add("fonts-ready"));
 
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && pendingQuestion) {
+  if (document.hidden) return;
+  // A new question arrived while tabbed out — apply it (takes priority over result)
+  if (pendingQuestion) {
     const { question, index, total } = pendingQuestion;
+    pendingResult = null;
     applyNewQuestion(question, index, total);
+  } else if (pendingResult) {
+    // A round result arrived while tabbed out — show it
+    const { yes, total, isLast } = pendingResult;
+    pendingResult = null;
+    document.getElementById("end-question-btn").style.display = "none";
+    document.getElementById("skip-btn").style.display = "none";
+    showResult(yes, total, isLast, isHost);
   }
 });
 </script>
