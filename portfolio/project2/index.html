@@ -56,6 +56,20 @@
   .screen { display: none; width: 100%; max-width: 480px; }
   .screen.active { display: flex; flex-direction: column; gap: 16px; }
 
+  /* Game screen: fixed to viewport so player-join/leave doesn't shift layout or resize buttons */
+  #screen-game.active {
+    height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: none;
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 16px 20px;
+    box-sizing: border-box;
+  }
+
   /* ── TYPOGRAPHY ── */
   .logo {
     font-family: 'Bebas Neue', sans-serif;
@@ -282,6 +296,8 @@
   /* ── VOTE BUTTONS ── */
   .vote-area {
     height: 100px;
+    min-height: 100px;
+    flex-shrink: 0;
     border-radius: var(--radius);
     overflow: hidden;
     margin-top: 4px;
@@ -317,9 +333,9 @@
   .vote-half.yes:hover { background: rgba(61,220,132,0.08);  border-color: var(--green); }
   .vote-half.no:hover  { background: rgba(255,77,109,0.08);  border-color: var(--red); }
 
-  .vote-track.voted-yes .vote-half.yes { flex: 2; background: rgba(61,220,132,0.18); border-color: var(--green); }
+  .vote-track.voted-yes .vote-half.yes { flex: 2; background: rgba(61,220,132,0.18); border-color: var(--green); color: var(--green); }
   .vote-track.voted-yes .vote-half.no  { flex: 0; }
-  .vote-track.voted-no  .vote-half.no  { flex: 2; background: rgba(255,77,109,0.18); border-color: var(--red); }
+  .vote-track.voted-no  .vote-half.no  { flex: 2; background: rgba(255,77,109,0.18); border-color: var(--red); color: var(--red); }
   .vote-track.voted-no  .vote-half.yes { flex: 0; }
 
   .vote-area.locked .vote-half { cursor: default; pointer-events: none; }
@@ -542,12 +558,36 @@
     border-top: 1px solid var(--border);
     margin-top: 2px;
   }
+  /* Unified name styling — players and spectators use same font/size */
+  .game-player-name {
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text);
+  }
+  .game-player-name.offline { opacity: 0.45; text-decoration: line-through; }
+  .game-player-name.spectator-name { color: var(--muted); }
+  .game-player-name.spectator-name.offline { opacity: 0.45; }
   .spectator-badge {
     margin-left: auto;
     font-size: 9px;
     letter-spacing: 0.15em;
     color: var(--muted);
     text-transform: uppercase;
+  }
+  /* Waiting status shown during a question round */
+  .player-waiting-label {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-left: auto;
+  }
+  .player-answered-label {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-left: auto;
   }
 </style>
 </head>
@@ -652,7 +692,7 @@
 
   <div class="game-player-panel">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
-      <div class="card-label">Players</div>
+      <div style="font-size:9px;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase">Players</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:0.25em;color:var(--accent)" id="game-room-code"></div>
     </div>
     <div id="game-player-list"></div>
@@ -729,6 +769,61 @@ let gameResults   = [];
 let pendingQuestion = null;  // new_question received while tabbed out
 let pendingResult  = null;   // round_result received while tabbed out
 
+// Track per-player answered state during a question round
+// Map of playerId → boolean (true = has answered)
+let playerAnsweredMap = {};
+// Last known player/spectator lists for re-renders
+let lastPlayers = [];
+let lastSpectators = [];
+let inQuestionRound = false;  // true while a question is active
+
+function renderGamePlayerList(players, spectators) {
+  // Cache for re-renders triggered by vote_count
+  if (players) { lastPlayers = players; }
+  if (spectators) { lastSpectators = spectators; }
+  const p = lastPlayers;
+  const s = lastSpectators;
+
+  // During a question: sort waiting (unanswered) to top, answered to bottom
+  let sorted = [...p];
+  if (inQuestionRound) {
+    const waiting = sorted.filter(pl => !playerAnsweredMap[pl.id]);
+    const answered = sorted.filter(pl => playerAnsweredMap[pl.id]);
+    sorted = [...waiting, ...answered];
+  }
+
+  document.getElementById("game-player-list").innerHTML = sorted.map(pl => {
+    const isMe = pl.id === socket.id;
+    const hasAnswered = playerAnsweredMap[pl.id];
+    let statusHtml = "";
+    if (inQuestionRound) {
+      statusHtml = hasAnswered
+        ? '<span class="player-answered-label">✓</span>'
+        : '<span class="player-waiting-label">waiting…</span>';
+    }
+    const badges = [];
+    if (pl.isHost) badges.push('<span style="font-size:9px;color:var(--accent2);letter-spacing:0.12em;text-transform:uppercase">HOST</span>');
+    if (isMe)     badges.push('<span style="font-size:9px;color:var(--accent);letter-spacing:0.12em;text-transform:uppercase">YOU</span>');
+    return `
+    <div class="game-player-row">
+      <div class="player-dot ${pl.connected ? 'online' : 'offline'}"></div>
+      <span class="game-player-name${pl.connected ? '' : ' offline'}">${pl.name}</span>
+      ${badges.join(' ')}
+      ${statusHtml}
+    </div>`;
+  }).join("");
+
+  // Spectator section — same label style as Players label
+  const specSection = document.getElementById("spectator-section");
+  specSection.style.display = s.length > 0 ? "" : "none";
+  document.getElementById("game-spectator-list").innerHTML = s.map(sp => `
+    <div class="game-player-row">
+      <div class="player-dot ${sp.connected ? 'online' : 'offline'}"></div>
+      <span class="game-player-name spectator-name${sp.connected ? '' : ' offline'}">${sp.name}</span>
+    </div>
+  `).join("");
+}
+
 // ── CONNECTION ───────────────────────────────────────────────────────────────
 socket.on("connect", () => {
   document.getElementById("conn-status").textContent = "Connected ✓";
@@ -765,6 +860,8 @@ socket.on("joined_midgame", ({ roomId, questionIndex, question, total, state, la
   myRoom = roomId;
   isHost = false;
   currentVote = null;
+  playerAnsweredMap = {};
+  inQuestionRound = (state === "question");
 
   setQuestion(question, questionIndex, total);
   resetVoteUI();
@@ -798,13 +895,16 @@ socket.on("room_update", ({ players, spectators = [] }) => {
 
   // Lobby player list — show players and spectators together
   const allLobbyRows = [
-    ...players.map(p => `
+    ...players.map(p => {
+      const isMe = p.id === socket.id;
+      return `
       <div class="player-item">
         <div class="player-dot ${p.connected ? 'online' : 'offline'}"></div>
         <span style="${p.connected ? '' : 'opacity:0.45'}">${p.name}</span>
         ${p.isHost ? '<span class="host-badge">host</span>' : ''}
-        ${!p.isHost ? '' : ''}
-      </div>`),
+        ${isMe ? '<span class="host-badge" style="color:var(--accent)">you</span>' : ''}
+      </div>`;
+    }),
     ...spectators.map(s => `
       <div class="player-item">
         <div class="player-dot ${s.connected ? 'online' : 'offline'}"></div>
@@ -815,24 +915,8 @@ socket.on("room_update", ({ players, spectators = [] }) => {
   document.getElementById("player-count").textContent = players.length;
   document.getElementById("player-list").innerHTML = allLobbyRows.join("");
 
-  // Game player list (players only)
-  document.getElementById("game-player-list").innerHTML = players.map(p => `
-    <div class="game-player-row">
-      <div class="player-dot ${p.connected ? 'online' : 'offline'}"></div>
-      <span style="${p.connected ? '' : 'opacity:0.45;text-decoration:line-through'}">${p.name}</span>
-      ${p.isHost ? '<span style="margin-left:6px;font-size:9px;color:var(--accent2);letter-spacing:0.12em">HOST</span>' : ''}
-    </div>
-  `).join("");
-
-  // Spectator section — shown below players when spectators exist
-  const specSection = document.getElementById("spectator-section");
-  specSection.style.display = spectators.length > 0 ? "" : "none";
-  document.getElementById("game-spectator-list").innerHTML = spectators.map(s => `
-    <div class="game-player-row">
-      <div class="player-dot ${s.connected ? 'online' : 'offline'}"></div>
-      <span style="${s.connected ? 'color:var(--muted)' : 'opacity:0.45;color:var(--muted);text-decoration:line-through'}">${s.name}</span>
-    </div>
-  `).join("");
+  // Rebuild game player list with waiting/answered status and "You" badge
+  renderGamePlayerList(players, spectators);
 
   // Promoted to host mid-game?
   const me = players.find(p => p.id === socket.id);
@@ -863,6 +947,8 @@ socket.on("game_started", () => {
   document.getElementById("game-room-code").textContent = myRoom;
   document.getElementById("midgame-shuffle-row").style.display = isHost ? "flex" : "none";
   document.getElementById("end-question-btn").style.display = isHost ? "inline-block" : "none";
+  playerAnsweredMap = {};
+  inQuestionRound = true;
   // Spectators skip vote area; show spectate button for regular players
   if (isSpectator) {
     document.getElementById("vote-area").style.display = "none";
@@ -880,6 +966,8 @@ socket.on("game_started", () => {
 
 socket.on("new_question", ({ question, index, total }) => {
   currentVote = null;
+  playerAnsweredMap = {};
+  inQuestionRound = true;
   if (document.hidden) {
     pendingQuestion = { question, index, total };
     return;
@@ -891,6 +979,8 @@ function applyNewQuestion(question, index, total) {
   setQuestion(question, index, total);
   resetVoteUI();
   hideResult();
+  playerAnsweredMap = {};
+  inQuestionRound = true;
   // Spectators never see the vote buttons
   document.getElementById("vote-area").style.display = isSpectator ? "none" : "";
   document.getElementById("vote-progress").style.display = "flex";
@@ -900,19 +990,28 @@ function applyNewQuestion(question, index, total) {
   document.getElementById("midgame-shuffle-row").style.display = isHost ? "flex" : "none";
   rebuildPips(totalPlayers);
   updatePips(0);
+  renderGamePlayerList(null, null);
   pendingQuestion = null;
 }
 
-socket.on("vote_count", ({ voted, total }) => {
+socket.on("vote_count", ({ voted, total, answeredIds }) => {
   totalPlayers = total;
   rebuildPips(total);
   updatePips(voted);
   document.getElementById("vote-count-text").textContent = `${voted}/${total} answered`;
+  // Update answered map if server sends ids; otherwise infer from voted count
+  if (answeredIds) {
+    playerAnsweredMap = {};
+    answeredIds.forEach(id => { playerAnsweredMap[id] = true; });
+  }
+  renderGamePlayerList(null, null);
 });
 
 socket.on("round_result", ({ yes, total, isLast }) => {
   document.getElementById("end-question-btn").style.display = "none";
   document.getElementById("skip-btn").style.display = "none";
+  inQuestionRound = false;
+  renderGamePlayerList(null, null);
   if (document.hidden) {
     pendingResult = { yes, total, isLast };
     return;
@@ -988,15 +1087,19 @@ function vote(choice) {
   const area = document.getElementById("vote-area");
   if (area.classList.contains("locked")) return;
   if (currentVote === choice) {
+    // Deselect
     currentVote = null;
     document.getElementById("vote-track").className = "vote-track";
+    playerAnsweredMap[socket.id] = false;
     socket.emit("submit_vote", { roomId: myRoom, vote: choice });
   } else {
     currentVote = choice;
     document.getElementById("vote-track").className =
       "vote-track " + (choice === "yes" ? "voted-yes" : "voted-no");
+    playerAnsweredMap[socket.id] = true;
     socket.emit("submit_vote", { roomId: myRoom, vote: choice });
   }
+  renderGamePlayerList(null, null);
 }
 
 function nextRound() {
@@ -1188,36 +1291,43 @@ function showFinal(scores, results) {
   document.getElementById("play-again-wait-msg").style.display = "none";
   renderPlayAgainNames([]);
 
-  // Scores tab
+  // Scores tab — one header row, then score rows without per-row labels
   const rankClass = i => i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "";
-  document.getElementById("final-list").innerHTML = scores.map((s, i) => {
+  const headerHtml = `
+    <div class="score-item" style="background:transparent;border-color:transparent;padding-bottom:0">
+      <div style="width:24px;flex-shrink:0"></div>
+      <div style="flex:1"></div>
+      <div class="score-cols">
+        <div class="score-col"><div class="score-col-label">Yes / Total</div></div>
+        <div class="score-col"><div class="score-col-label">Score</div></div>
+      </div>
+    </div>`;
+  const rowsHtml = scores.map((s, i) => {
     const asked = s.questionsAsked || 0;
     const yes = s.yesCount || 0;
-    const noCount = asked - yes;
     return `
     <div class="score-item">
       <div class="score-rank ${rankClass(i)}">${i + 1}</div>
       <div class="score-name">${s.name}</div>
       <div class="score-cols">
         <div class="score-col">
-          <div class="score-col-label">Yes / Total</div>
           <div class="score-col-val">${yes}/${asked}</div>
         </div>
         <div class="score-col">
-          <div class="score-col-label">Score</div>
           <div class="score-col-val accent">${s.score}</div>
         </div>
       </div>
     </div>`;
   }).join("");
+  document.getElementById("final-list").innerHTML = headerHtml + rowsHtml;
 
-  // Questions tab
+  // Questions tab — sorted lowest to highest percentage
   const qList = document.getElementById("question-rank-list");
   if (results && results.length > 0) {
     const sorted = [...results].sort((a, b) => {
       const pA = a.total > 0 ? a.yes / a.total : 0;
       const pB = b.total > 0 ? b.yes / b.total : 0;
-      return pB - pA;
+      return pA - pB;  // ascending: lowest % first
     });
     qList.innerHTML = sorted.map((r, i) => {
       const pct = r.total > 0 ? Math.round((r.yes / r.total) * 100) : 0;
@@ -1265,6 +1375,8 @@ document.addEventListener("visibilitychange", () => {
     document.getElementById("skip-btn").style.display = "none";
     showResult(yes, total, isLast, isHost);
   }
+  // Always re-render the player list when tabbing back in
+  renderGamePlayerList(null, null);
 });
 </script>
 </body>
