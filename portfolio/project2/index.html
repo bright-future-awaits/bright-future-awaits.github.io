@@ -70,19 +70,56 @@
     box-sizing: border-box;
   }
 
-  /* Final screen: same fixed layout so play-again list growing below never pushes Results title off screen */
+  /* Final screen: fixed to viewport, flex column with tab content filling middle */
   #screen-final.active {
     height: 100dvh;
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior: none;
+    overflow: hidden;  /* outer container never scrolls — children scroll internally */
     position: fixed;
     top: 0;
     left: 50%;
     transform: translateX(-50%);
     padding: 16px 20px;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
   }
+
+  /* Tab panel content scrolls internally, never resizes the outer screen */
+  .tab-panel-scroll {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;  /* critical: allow flex child to shrink below content size */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .tab-panel-scroll::-webkit-scrollbar { width: 3px; }
+  .tab-panel-scroll::-webkit-scrollbar-track { background: transparent; }
+  .tab-panel-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+  /* Play-again panel is fixed-size at the bottom — never grows to push content up */
+  #play-again-panel {
+    flex-shrink: 0;
+  }
+
+  /* ── SCROLLBAR ── */
+  /* Thin minimal scrollbar for desktop — hidden on mobile (they use native overlay scrollbars) */
+  #screen-game, #screen-final, .game-player-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  #screen-game::-webkit-scrollbar,
+  #screen-final::-webkit-scrollbar,
+  .game-player-scroll::-webkit-scrollbar { width: 3px; }
+  #screen-game::-webkit-scrollbar-track,
+  #screen-final::-webkit-scrollbar-track,
+  .game-player-scroll::-webkit-scrollbar-track { background: transparent; }
+  #screen-game::-webkit-scrollbar-thumb,
+  #screen-final::-webkit-scrollbar-thumb,
+  .game-player-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+  #screen-game::-webkit-scrollbar-thumb:hover,
+  #screen-final::-webkit-scrollbar-thumb:hover,
+  .game-player-scroll::-webkit-scrollbar-thumb:hover { background: #333; }
 
   /* ── TYPOGRAPHY ── */
   .logo {
@@ -752,22 +789,24 @@
 
 <!-- ── FINAL ── -->
 <div class="screen" id="screen-final">
-  <div class="logo" style="font-size:2.5rem">Results</div>
+  <div class="logo" style="font-size:2.5rem;flex-shrink:0">Results</div>
 
-  <div class="tab-bar">
+  <div class="tab-bar" style="flex-shrink:0">
     <button class="tab-btn active" id="tab-scores-btn" onclick="switchTab('scores')">Scores</button>
     <button class="tab-btn" id="tab-questions-btn" onclick="switchTab('questions')">Questions</button>
   </div>
 
-  <div class="tab-panel active" id="tab-scores">
-    <div class="final-list" id="final-list"></div>
+  <!-- Scrollable tab content — fills all available space between header and play-again panel -->
+  <div class="tab-panel-scroll" id="tab-panel-scroll">
+    <div class="tab-panel active" id="tab-scores">
+      <div class="final-list" id="final-list"></div>
+    </div>
+    <div class="tab-panel" id="tab-questions">
+      <div class="final-list" id="question-rank-list"></div>
+    </div>
   </div>
 
-  <div class="tab-panel" id="tab-questions">
-    <div class="final-list" id="question-rank-list"></div>
-  </div>
-
-  <!-- Play Again panel — always visible on end screen -->
+  <!-- Play Again panel — always visible on end screen, pinned below tab content -->
   <div class="card" id="play-again-panel">
     <div class="card-label">Playing Again</div>
     <!-- Names of people who've opted in appear here -->
@@ -1384,10 +1423,10 @@ function showFinal(scores, results) {
   }
 
   showScreen("screen-final");
-  // Always start at top so "Results" title is visible, play-again content grows below
+  // Always start at top so "Results" title is visible, play-again content is below
   requestAnimationFrame(() => {
-    const el = document.getElementById("screen-final");
-    if (el) el.scrollTop = 0;
+    const scroll = document.getElementById("tab-panel-scroll");
+    if (scroll) scroll.scrollTop = 0;
   });
 }
 
@@ -1408,6 +1447,8 @@ document.fonts.ready.then(() => document.body.classList.add("fonts-ready"));
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) return;
+  const onGameScreen = document.getElementById("screen-game").classList.contains("active");
+
   // Result always takes priority — it is more recent than any pending question
   if (pendingResult) {
     const { yes, total, isLast } = pendingResult;
@@ -1419,6 +1460,10 @@ document.addEventListener("visibilitychange", () => {
   } else if (pendingQuestion) {
     const { question, index, total } = pendingQuestion;
     applyNewQuestion(question, index, total);
+  } else if (onGameScreen && myRoom) {
+    // No pending events — ask server for current state in case we missed events
+    // (common on desktop where socket polling may have paused while tabbed out)
+    socket.emit("request_state", { roomId: myRoom });
   }
   // Always re-render the player list when tabbing back in
   renderGamePlayerList(null, null);
