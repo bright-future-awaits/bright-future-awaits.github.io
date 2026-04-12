@@ -1457,6 +1457,9 @@ function showFinal(scores, results) {
       <div style="width:24px;flex-shrink:0"></div>
       <div style="flex:1"></div>
       <div style="width:52px;flex-shrink:0;text-align:right">
+        <div class="score-col-label">Yes / Total</div>
+      </div>
+      <div style="width:52px;flex-shrink:0;text-align:right">
         <div class="score-col-label">Score</div>
       </div>
     </div>`;
@@ -1467,6 +1470,9 @@ function showFinal(scores, results) {
     <div class="score-item">
       <div class="score-rank ${rankClass(i)}">${i + 1}</div>
       <div class="score-name">${s.name}</div>
+      <div style="width:52px;flex-shrink:0;text-align:right">
+        <div class="score-col-val" style="font-size:1.1rem;color:var(--muted)">${yes}/${asked}</div>
+      </div>
       <div style="width:52px;flex-shrink:0;text-align:right">
         <div class="score-col-val accent">${s.score}</div>
       </div>
