@@ -70,6 +70,20 @@
     box-sizing: border-box;
   }
 
+  /* Final screen: same fixed layout so play-again list growing below never pushes Results title off screen */
+  #screen-final.active {
+    height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: none;
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 16px 20px;
+    box-sizing: border-box;
+  }
+
   /* ── TYPOGRAPHY ── */
   .logo {
     font-family: 'Bebas Neue', sans-serif;
@@ -905,12 +919,16 @@ socket.on("room_update", ({ players, spectators = [] }) => {
         ${isMe ? '<span class="host-badge" style="color:var(--accent)">you</span>' : ''}
       </div>`;
     }),
-    ...spectators.map(s => `
+    ...spectators.map(s => {
+      const isMe = s.id === socket.id;
+      return `
       <div class="player-item">
         <div class="player-dot ${s.connected ? 'online' : 'offline'}"></div>
         <span style="${s.connected ? 'color:var(--muted)' : 'opacity:0.45;color:var(--muted)'}">${s.name}</span>
         <span class="host-badge" style="color:var(--muted)">spectator</span>
-      </div>`)
+        ${isMe ? '<span class="host-badge" style="color:var(--accent)">you</span>' : ''}
+      </div>`;
+    })
   ];
   document.getElementById("player-count").textContent = players.length;
   document.getElementById("player-list").innerHTML = allLobbyRows.join("");
@@ -1294,12 +1312,11 @@ function showFinal(scores, results) {
   // Scores tab — one header row, then score rows without per-row labels
   const rankClass = i => i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "";
   const headerHtml = `
-    <div class="score-item" style="background:transparent;border-color:transparent;padding-bottom:0">
+    <div class="score-item" style="background:transparent;border-color:transparent;padding-top:0;padding-bottom:0">
       <div style="width:24px;flex-shrink:0"></div>
       <div style="flex:1"></div>
-      <div class="score-cols">
-        <div class="score-col"><div class="score-col-label">Yes / Total</div></div>
-        <div class="score-col"><div class="score-col-label">Score</div></div>
+      <div style="width:52px;flex-shrink:0;text-align:right">
+        <div class="score-col-label">Score</div>
       </div>
     </div>`;
   const rowsHtml = scores.map((s, i) => {
@@ -1309,13 +1326,8 @@ function showFinal(scores, results) {
     <div class="score-item">
       <div class="score-rank ${rankClass(i)}">${i + 1}</div>
       <div class="score-name">${s.name}</div>
-      <div class="score-cols">
-        <div class="score-col">
-          <div class="score-col-val">${yes}/${asked}</div>
-        </div>
-        <div class="score-col">
-          <div class="score-col-val accent">${s.score}</div>
-        </div>
+      <div style="width:52px;flex-shrink:0;text-align:right">
+        <div class="score-col-val accent">${s.score}</div>
       </div>
     </div>`;
   }).join("");
@@ -1343,6 +1355,11 @@ function showFinal(scores, results) {
   }
 
   showScreen("screen-final");
+  // Always start at top so "Results" title is visible, play-again content grows below
+  requestAnimationFrame(() => {
+    const el = document.getElementById("screen-final");
+    if (el) el.scrollTop = 0;
+  });
 }
 
 function switchTab(tab) {
