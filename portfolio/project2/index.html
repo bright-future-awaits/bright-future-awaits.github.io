@@ -182,10 +182,14 @@
   .vote-half.yes.pressing { background: rgba(61,220,132,0.25) !important; border-color: var(--green) !important; }
   .vote-half.no.pressing  { background: rgba(255,77,109,0.25) !important; border-color: var(--red)   !important; }
 
-  /* Suppress lingering hover styles on touch devices */
+  /* Voted/selected state — applied by JS, highest specificity needed for mobile */
+  .vote-half.yes.selected { background: rgba(61,220,132,0.18) !important; border-color: var(--green) !important; color: var(--green) !important; }
+  .vote-half.no.selected  { background: rgba(255,77,109,0.18) !important; border-color: var(--red)   !important; color: var(--red)   !important; }
+
+  /* Suppress lingering hover styles on touch devices — but NOT when selected */
   @media (hover: none) {
-    .vote-half.yes:hover:not(.pressing) { background: var(--surface) !important; border-color: var(--border) !important; }
-    .vote-half.no:hover:not(.pressing)  { background: var(--surface) !important; border-color: var(--border) !important; }
+    .vote-half.yes:hover:not(.selected) { background: var(--surface) !important; border-color: var(--border) !important; }
+    .vote-half.no:hover:not(.selected)  { background: var(--surface) !important; border-color: var(--border) !important; }
     .btn:hover:not(:active)      { background: var(--accent) !important; transform: none !important; }
     .btn-ghost:hover:not(:active){ background: transparent !important; }
     .btn-sm:hover:not(:active)   { color: var(--muted) !important; border-color: var(--border) !important; }
@@ -559,6 +563,16 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    flex-shrink: 0;
+  }
+  /* Fixed-height scrollable zone for player+spectator rows */
+  .game-player-scroll {
+    max-height: 120px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overscroll-behavior: contain;
   }
   .game-player-row {
     display: flex; align-items: center; gap: 8px; font-size: 12px;
@@ -709,11 +723,13 @@
       <div style="font-size:9px;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase">Players</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:0.25em;color:var(--accent)" id="game-room-code"></div>
     </div>
-    <div id="game-player-list"></div>
-    <!-- Spectator section — hidden when no spectators -->
-    <div id="spectator-section" style="display:none">
-      <div class="panel-section-label">Spectators</div>
-      <div id="game-spectator-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+    <div class="game-player-scroll" id="game-player-scroll">
+      <div id="game-player-list"></div>
+      <!-- Spectator section — hidden when no spectators -->
+      <div id="spectator-section" style="display:none">
+        <div class="panel-section-label">Spectators</div>
+        <div id="game-spectator-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+      </div>
     </div>
     <!-- Spectate button — shown only to non-host non-spectators during game -->
     <button class="btn-sm" id="game-spectate-btn" onclick="becomeSpectator()" style="display:none;margin-top:4px;align-self:flex-start">Spectate</button>
@@ -1030,7 +1046,13 @@ socket.on("round_result", ({ yes, total, isLast }) => {
   document.getElementById("skip-btn").style.display = "none";
   inQuestionRound = false;
   renderGamePlayerList(null, null);
+  // Hide vote area for players who didn't answer before time ran out
+  if (!isSpectator && currentVote === null) {
+    document.getElementById("vote-area").style.display = "none";
+    document.getElementById("vote-progress").style.display = "none";
+  }
   if (document.hidden) {
+    pendingQuestion = null;  // result supersedes any pending question
     pendingResult = { yes, total, isLast };
     return;
   }
@@ -1104,16 +1126,22 @@ function startGame() {
 function vote(choice) {
   const area = document.getElementById("vote-area");
   if (area.classList.contains("locked")) return;
+  const yesBtn = document.querySelector(".vote-half.yes");
+  const noBtn  = document.querySelector(".vote-half.no");
   if (currentVote === choice) {
     // Deselect
     currentVote = null;
     document.getElementById("vote-track").className = "vote-track";
+    yesBtn.classList.remove("selected");
+    noBtn.classList.remove("selected");
     playerAnsweredMap[socket.id] = false;
     socket.emit("submit_vote", { roomId: myRoom, vote: choice });
   } else {
     currentVote = choice;
     document.getElementById("vote-track").className =
       "vote-track " + (choice === "yes" ? "voted-yes" : "voted-no");
+    yesBtn.classList.toggle("selected", choice === "yes");
+    noBtn.classList.toggle("selected",  choice === "no");
     playerAnsweredMap[socket.id] = true;
     socket.emit("submit_vote", { roomId: myRoom, vote: choice });
   }
@@ -1232,6 +1260,7 @@ function setQuestion(question, index, total) {
 function resetVoteUI() {
   document.getElementById("vote-track").className = "vote-track";
   document.getElementById("vote-area").classList.remove("locked");
+  document.querySelectorAll(".vote-half").forEach(b => b.classList.remove("selected"));
 }
 
 function lockVoteArea() {
@@ -1379,18 +1408,17 @@ document.fonts.ready.then(() => document.body.classList.add("fonts-ready"));
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) return;
-  // A new question arrived while tabbed out — apply it (takes priority over result)
-  if (pendingQuestion) {
-    const { question, index, total } = pendingQuestion;
-    pendingResult = null;
-    applyNewQuestion(question, index, total);
-  } else if (pendingResult) {
-    // A round result arrived while tabbed out — show it
+  // Result always takes priority — it is more recent than any pending question
+  if (pendingResult) {
     const { yes, total, isLast } = pendingResult;
     pendingResult = null;
+    pendingQuestion = null;
     document.getElementById("end-question-btn").style.display = "none";
     document.getElementById("skip-btn").style.display = "none";
     showResult(yes, total, isLast, isHost);
+  } else if (pendingQuestion) {
+    const { question, index, total } = pendingQuestion;
+    applyNewQuestion(question, index, total);
   }
   // Always re-render the player list when tabbing back in
   renderGamePlayerList(null, null);
