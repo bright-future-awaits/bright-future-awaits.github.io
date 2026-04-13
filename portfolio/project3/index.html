@@ -137,16 +137,23 @@ input[type=range]{flex:1;accent-color:var(--accent)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 let map, drawLayer, currentRect=null, stlBuffer=null, objData=null;
-let selectedRes=10, meshData=null;
+let selectedRes=10;
 let renderer, scene, camera, isDragging=false, prevMouse={x:0,y:0}, rotX=0.4, rotY=0.4, camDist=180;
+let terrainMesh=null;
 
 // ── MAP ──────────────────────────────────────────────────────────
 map = L.map('map',{zoomControl:true}).setView([36.1,-112.1],10);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(map);
+L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{
+  attribution:'© OpenStreetMap © OpenTopoMap',
+  maxZoom:17
+}).addTo(map);
 drawLayer = new L.FeatureGroup();
 map.addLayer(drawLayer);
 const dc = new L.Control.Draw({
-  draw:{rectangle:{shapeOptions:{color:'#c8ff00',fillOpacity:0.15,weight:2}},polyline:false,polygon:false,circle:false,circlemarker:false,marker:false},
+  draw:{
+    rectangle:{shapeOptions:{color:'#ff3300',fillOpacity:0.15,weight:2.5}},
+    polyline:false,polygon:false,circle:false,circlemarker:false,marker:false
+  },
   edit:{featureGroup:drawLayer}
 });
 map.addControl(dc);
@@ -154,32 +161,24 @@ map.on(L.Draw.Event.CREATED,e=>{drawLayer.clearLayers();drawLayer.addLayer(e.lay
 map.on(L.Draw.Event.DELETED,()=>{currentRect=null;showNoSel()});
 map.on(L.Draw.Event.EDITED,e=>{e.layers.eachLayer(l=>{currentRect=l.getBounds()});updateStats()});
 
-// ── THREE.JS PREVIEW ─────────────────────────────────────────────
-const canvas = document.getElementById('preview-canvas');
-renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+// ── THREE.JS ─────────────────────────────────────────────────────
+const canvas=document.getElementById('preview-canvas');
+renderer=new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setClearColor(0x0d0d0d,1);
-scene = new THREE.Scene();
-camera = new THREE.PerspectiveCamera(45,2,0.1,5000);
-camera.position.set(0,100,200);
-camera.lookAt(0,0,0);
+scene=new THREE.Scene();
+camera=new THREE.PerspectiveCamera(45,2,0.1,5000);
 scene.add(new THREE.AmbientLight(0xffffff,0.4));
-const dLight = new THREE.DirectionalLight(0xc8ff00,0.8);
-dLight.position.set(1,2,1);
-scene.add(dLight);
-const dLight2 = new THREE.DirectionalLight(0xffffff,0.3);
-dLight2.position.set(-1,1,-1);
-scene.add(dLight2);
+const dl=new THREE.DirectionalLight(0xc8ff00,0.8);dl.position.set(1,2,1);scene.add(dl);
+const dl2=new THREE.DirectionalLight(0xffffff,0.3);dl2.position.set(-1,1,-1);scene.add(dl2);
 
 function resizeRenderer(){
-  const pane=document.getElementById('preview-pane');
-  const w=pane.clientWidth,h=pane.clientHeight;
-  renderer.setSize(w,h,false);
-  camera.aspect=w/h;
+  const p=document.getElementById('preview-pane');
+  renderer.setSize(p.clientWidth,p.clientHeight,false);
+  camera.aspect=p.clientWidth/p.clientHeight;
   camera.updateProjectionMatrix();
 }
 resizeRenderer();
 window.addEventListener('resize',resizeRenderer);
-
 canvas.addEventListener('mousedown',e=>{isDragging=true;prevMouse={x:e.clientX,y:e.clientY}});
 canvas.addEventListener('mouseup',()=>isDragging=false);
 canvas.addEventListener('mouseleave',()=>isDragging=false);
@@ -190,70 +189,31 @@ canvas.addEventListener('mousemove',e=>{
   rotX=Math.max(-Math.PI/2,Math.min(Math.PI/2,rotX));
   prevMouse={x:e.clientX,y:e.clientY};
 });
-canvas.addEventListener('wheel',e=>{
-  camDist=Math.max(30,Math.min(600,camDist+e.deltaY*0.3));
-  e.preventDefault();
-},{passive:false});
+canvas.addEventListener('wheel',e=>{camDist=Math.max(30,Math.min(600,camDist+e.deltaY*0.3));e.preventDefault();},{passive:false});
 
-let terrainMesh=null;
-function animate(){
+(function animate(){
   requestAnimationFrame(animate);
   if(terrainMesh){
-    const r=camDist;
-    camera.position.set(Math.sin(rotY)*Math.cos(rotX)*r,Math.sin(rotX)*r,Math.cos(rotY)*Math.cos(rotX)*r);
+    camera.position.set(
+      Math.sin(rotY)*Math.cos(rotX)*camDist,
+      Math.sin(rotX)*camDist,
+      Math.cos(rotY)*Math.cos(rotX)*camDist
+    );
     camera.lookAt(terrainMesh.position);
   }
   renderer.render(scene,camera);
-}
-animate();
+})();
 
-function showPreview(elevs,w,h,exag,baseThick){
-  if(terrainMesh){scene.remove(terrainMesh);terrainMesh.geometry.dispose();terrainMesh.material.dispose();terrainMesh=null;}
-  const maxPts=200;
-  const stepX=Math.max(1,Math.floor(w/maxPts));
-  const stepY=Math.max(1,Math.floor(h/maxPts));
-  const cols=Math.floor(w/stepX);
-  const rows=Math.floor(h/stepY);
-  const allH=Array.from(elevs).filter(v=>v>-9999&&!isNaN(v));
-  const minH=Math.min(...allH),maxH=Math.max(...allH),range=maxH-minH||1;
-  const geo=new THREE.BufferGeometry();
-  const positions=new Float32Array(cols*rows*3);
-  const colors=new Float32Array(cols*rows*3);
-  const scaleXY=100/Math.max(cols,rows);
-  const scaleZ=(30/range)*exag;
-  let idx=0;
-  for(let row=0;row<rows;row++){
-    for(let col=0;col<cols;col++){
-      const ex=col*stepX,ey=row*stepY;
-      const v=elevs[ey*w+ex];
-      const z=(v>-9999&&!isNaN(v))?(v-minH)*scaleZ+baseThick:baseThick;
-      positions[idx*3]=(col-cols/2)*scaleXY;
-      positions[idx*3+1]=z-15;
-      positions[idx*3+2]=(row-rows/2)*scaleXY;
-      const t=z/((30*exag)+baseThick);
-      colors[idx*3]=0.1+t*0.6;
-      colors[idx*3+1]=0.3+t*0.5;
-      colors[idx*3+2]=0.05;
-      idx++;
-    }
-  }
-  const indices=[];
-  for(let row=0;row<rows-1;row++){
-    for(let col=0;col<cols-1;col++){
-      const a=row*cols+col,b=a+1,c=(row+1)*cols+col,d=c+1;
-      indices.push(a,c,b,b,c,d);
-    }
-  }
-  geo.setIndex(indices);
-  geo.setAttribute('position',new THREE.BufferAttribute(positions,3));
-  geo.setAttribute('color',new THREE.BufferAttribute(colors,3));
-  geo.computeVertexNormals();
-  const mat=new THREE.MeshPhongMaterial({vertexColors:true,side:THREE.DoubleSide});
-  terrainMesh=new THREE.Mesh(geo,mat);
-  scene.add(terrainMesh);
-  camDist=180;rotX=0.5;rotY=0.4;
-  document.getElementById('empty-preview').style.display='none';
-  document.getElementById('preview-hint').style.display='block';
+// ── SAFE MIN/MAX (fixes call stack overflow on large arrays) ──────
+function arrayMin(arr){
+  let m=Infinity;
+  for(let i=0;i<arr.length;i++){const v=arr[i];if(v>-9999&&!isNaN(v)&&v<m)m=v;}
+  return m;
+}
+function arrayMax(arr){
+  let m=-Infinity;
+  for(let i=0;i<arr.length;i++){const v=arr[i];if(v>-9999&&!isNaN(v)&&v>m)m=v;}
+  return m;
 }
 
 // ── UTILS ────────────────────────────────────────────────────────
@@ -264,14 +224,10 @@ function haverDist(lat1,lon1,lat2,lon2){
 }
 function log(msg,type='info'){
   const el=document.getElementById('log');
-  const d=document.createElement('div');
-  d.className='log-line '+type;
-  d.textContent='> '+msg;
-  el.appendChild(d);
-  el.scrollTop=el.scrollHeight;
+  const d=document.createElement('div');d.className='log-line '+type;d.textContent='> '+msg;
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
 }
 function setProgress(p){document.getElementById('prog').style.width=p+'%'}
-
 function updateStats(){
   if(!currentRect)return;
   const sw=currentRect.getSouthWest(),ne=currentRect.getNorthEast();
@@ -299,12 +255,11 @@ function showNoSel(){
 }
 function setRes(el){
   document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
-  el.classList.add('active');
-  selectedRes=parseInt(el.dataset.res);
+  el.classList.add('active');selectedRes=parseInt(el.dataset.res);
   if(currentRect)updateStats();
 }
 
-// ── FETCH ELEVATION ──────────────────────────────────────────────
+// ── FETCH ────────────────────────────────────────────────────────
 async function fetchElevation(bounds,res){
   const sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
   const pxW=Math.min(Math.round((ne.lng-sw.lng)*111000/res),512);
@@ -313,8 +268,8 @@ async function fetchElevation(bounds,res){
   const url=`https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=${bbox}&bboxSR=4326&size=${pxW},${pxH}&imageSR=4326&format=tiff&pixelType=F32&noDataInterpretation=esriNoDataMatchAny&interpolation=+RSP_BilinearInterpolation&f=json`;
   log(`requesting ${pxW}×${pxH} grid from USGS...`);
   const meta=await fetch(url).then(r=>r.json());
-  if(!meta.href)throw new Error('USGS returned no image URL. Try a smaller area.');
-  log(`downloading geotiff...`);
+  if(!meta.href)throw new Error('USGS returned no image. Try a smaller area.');
+  log('downloading geotiff...');
   const buf=await fetch(meta.href).then(r=>r.arrayBuffer());
   log(`${(buf.byteLength/1024).toFixed(0)}kb received`,'ok');
   return {buf,width:pxW,height:pxH};
@@ -332,14 +287,8 @@ function parseTiff(buf,width,height){
     const rv=()=>type===3?view.getUint16(vo,le):view.getUint32(vo,le);
     if(tag===256)width=rv();
     else if(tag===257)height=rv();
-    else if(tag===273){
-      if(n===1)stripOffsets=[view.getUint32(vo,le)];
-      else{const o=view.getUint32(vo,le);for(let j=0;j<n;j++)stripOffsets.push(view.getUint32(o+j*4,le));}
-    }
-    else if(tag===279){
-      if(n===1)stripCounts=[view.getUint32(vo,le)];
-      else{const o=view.getUint32(vo,le);for(let j=0;j<n;j++)stripCounts.push(view.getUint32(o+j*4,le));}
-    }
+    else if(tag===273){if(n===1)stripOffsets=[view.getUint32(vo,le)];else{const o=view.getUint32(vo,le);for(let j=0;j<n;j++)stripOffsets.push(view.getUint32(o+j*4,le));}}
+    else if(tag===279){if(n===1)stripCounts=[view.getUint32(vo,le)];else{const o=view.getUint32(vo,le);for(let j=0;j<n;j++)stripCounts.push(view.getUint32(o+j*4,le));}}
     off+=12;
   }
   const elevs=new Float32Array(width*height);
@@ -354,8 +303,7 @@ function parseTiff(buf,width,height){
 // ── BUILD STL ────────────────────────────────────────────────────
 function buildSTL(elevs,w,h,exag,baseThick){
   const scaleXY=100/Math.max(w,h);
-  const allH=Array.from(elevs).filter(v=>v>-9999&&!isNaN(v));
-  const minH=Math.min(...allH),range=(Math.max(...allH)-minH)||1;
+  const minH=arrayMin(elevs),range=(arrayMax(elevs)-minH)||1;
   const scaleZ=(30/range)*exag;
   const normals=[],verts=[];
   function tri(a,b,c){
@@ -376,8 +324,7 @@ function buildSTL(elevs,w,h,exag,baseThick){
     tri(pt(x,0),[pt(x,0)[0],pt(x,0)[1],0],[pt(x+1,0)[0],pt(x+1,0)[1],0]);
     tri(pt(x,0),[pt(x+1,0)[0],pt(x+1,0)[1],0],pt(x+1,0));
   }
-  for(let x=0;x<w-1;x++){
-    const y=h-1;
+  for(let x=0;x<w-1;x++){const y=h-1;
     tri([pt(x,y)[0],pt(x,y)[1],0],pt(x,y),[pt(x+1,y)[0],pt(x+1,y)[1],0]);
     tri([pt(x+1,y)[0],pt(x+1,y)[1],0],pt(x,y),pt(x+1,y));
   }
@@ -385,8 +332,7 @@ function buildSTL(elevs,w,h,exag,baseThick){
     tri([0,pt(0,y)[1],0],[0,pt(0,y+1)[1],0],pt(0,y));
     tri([0,pt(0,y+1)[1],0],pt(0,y+1),pt(0,y));
   }
-  for(let y=0;y<h-1;y++){
-    const x=w-1;
+  for(let y=0;y<h-1;y++){const x=w-1;
     tri([pt(x,y)[0],pt(x,y)[1],0],pt(x,y),[pt(x,y+1)[0],pt(x,y+1)[1],0]);
     tri([pt(x,y+1)[0],pt(x,y+1)[1],0],pt(x,y),pt(x,y+1));
   }
@@ -395,10 +341,7 @@ function buildSTL(elevs,w,h,exag,baseThick){
   for(let i=0;i<tc;i++){
     const n=normals[i];
     dv.setFloat32(o,n[0],true);dv.setFloat32(o+4,n[1],true);dv.setFloat32(o+8,n[2],true);o+=12;
-    for(let v=0;v<3;v++){
-      const p=verts[i*3+v];
-      dv.setFloat32(o,p[0],true);dv.setFloat32(o+4,p[1],true);dv.setFloat32(o+8,p[2],true);o+=12;
-    }
+    for(let v=0;v<3;v++){const p=verts[i*3+v];dv.setFloat32(o,p[0],true);dv.setFloat32(o+4,p[1],true);dv.setFloat32(o+8,p[2],true);o+=12;}
     dv.setUint16(o,0,true);o+=2;
   }
   return ab;
@@ -407,23 +350,55 @@ function buildSTL(elevs,w,h,exag,baseThick){
 // ── BUILD OBJ ────────────────────────────────────────────────────
 function buildOBJ(elevs,w,h,exag,baseThick){
   const scaleXY=100/Math.max(w,h);
-  const allH=Array.from(elevs).filter(v=>v>-9999&&!isNaN(v));
-  const minH=Math.min(...allH),range=(Math.max(...allH)-minH)||1;
+  const minH=arrayMin(elevs),range=(arrayMax(elevs)-minH)||1;
   const scaleZ=(30/range)*exag;
   const ge=(x,y)=>{const v=elevs[y*w+x];return(v<-9999||isNaN(v))?minH:v;};
-  const lines=['# TerrainForge OBJ export','# Source: USGS 3DEP via National Map',''];
+  const lines=['# TerrainForge OBJ','# Source: USGS 3DEP',''];
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-    const px=x*scaleXY,py=(h-1-y)*scaleXY,pz=(ge(x,y)-minH)*scaleZ+baseThick;
-    lines.push(`v ${px.toFixed(4)} ${py.toFixed(4)} ${pz.toFixed(4)}`);
+    lines.push(`v ${(x*scaleXY).toFixed(4)} ${((h-1-y)*scaleXY).toFixed(4)} ${((ge(x,y)-minH)*scaleZ+baseThick).toFixed(4)}`);
   }
   lines.push('');
-  const vidx=(x,y)=>y*w+x+1;
   for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
-    const a=vidx(x,y),b=vidx(x+1,y),c=vidx(x,y+1),d=vidx(x+1,y+1);
-    lines.push(`f ${a} ${c} ${b}`);
-    lines.push(`f ${b} ${c} ${d}`);
+    const a=y*w+x+1,b=a+1,c=(y+1)*w+x+1,d=c+1;
+    lines.push(`f ${a} ${c} ${b}`);lines.push(`f ${b} ${c} ${d}`);
   }
   return lines.join('\n');
+}
+
+// ── PREVIEW ──────────────────────────────────────────────────────
+function showPreview(elevs,w,h,exag,baseThick){
+  if(terrainMesh){scene.remove(terrainMesh);terrainMesh.geometry.dispose();terrainMesh.material.dispose();terrainMesh=null;}
+  const maxPts=200,stepX=Math.max(1,Math.floor(w/maxPts)),stepY=Math.max(1,Math.floor(h/maxPts));
+  const cols=Math.floor(w/stepX),rows=Math.floor(h/stepY);
+  const minH=arrayMin(elevs),range=(arrayMax(elevs)-minH)||1;
+  const scaleXY=100/Math.max(cols,rows),scaleZ=(30/range)*exag;
+  const positions=new Float32Array(cols*rows*3),colors=new Float32Array(cols*rows*3);
+  let idx=0;
+  for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
+    const v=elevs[(row*stepY)*w+(col*stepX)];
+    const z=(v>-9999&&!isNaN(v))?(v-minH)*scaleZ+baseThick:baseThick;
+    positions[idx*3]=(col-cols/2)*scaleXY;
+    positions[idx*3+1]=z-15;
+    positions[idx*3+2]=(row-rows/2)*scaleXY;
+    const t=z/((30*exag)+baseThick);
+    colors[idx*3]=0.1+t*0.6;colors[idx*3+1]=0.3+t*0.5;colors[idx*3+2]=0.05;
+    idx++;
+  }
+  const indices=[];
+  for(let row=0;row<rows-1;row++)for(let col=0;col<cols-1;col++){
+    const a=row*cols+col,b=a+1,c=(row+1)*cols+col,d=c+1;
+    indices.push(a,c,b,b,c,d);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setIndex(indices);
+  geo.setAttribute('position',new THREE.BufferAttribute(positions,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(colors,3));
+  geo.computeVertexNormals();
+  terrainMesh=new THREE.Mesh(geo,new THREE.MeshPhongMaterial({vertexColors:true,side:THREE.DoubleSide}));
+  scene.add(terrainMesh);
+  camDist=180;rotX=0.5;rotY=0.4;
+  document.getElementById('empty-preview').style.display='none';
+  document.getElementById('preview-hint').style.display='block';
 }
 
 // ── GENERATE ─────────────────────────────────────────────────────
@@ -438,32 +413,32 @@ async function generate(){
   setProgress(5);
   try{
     const sw=currentRect.getSouthWest(),ne=currentRect.getNorthEast();
-    log(`bounds: ${sw.lat.toFixed(4)}°N ${sw.lng.toFixed(4)}°W → ${ne.lat.toFixed(4)}°N ${ne.lng.toFixed(4)}°W`);
+    log(`${sw.lat.toFixed(4)}°N ${sw.lng.toFixed(4)}°W → ${ne.lat.toFixed(4)}°N ${ne.lng.toFixed(4)}°W`);
     const {buf,width,height}=await fetchElevation(currentRect,selectedRes);
     setProgress(45);
-    log(`parsing tiff...`);
+    log('parsing tiff...');
     const {elevs,width:w,height:h}=parseTiff(buf,width,height);
-    log(`${w}×${h} elevation grid parsed`,'ok');
+    log(`${w}×${h} grid parsed`,'ok');
     setProgress(60);
     const exag=parseFloat(document.getElementById('exag').value);
     const base=parseInt(document.getElementById('base').value);
-    log(`building preview...`);
+    log('building preview...');
     showPreview(elevs,w,h,exag,base);
     setProgress(72);
-    log(`building stl...`);
+    log('building stl...');
     stlBuffer=buildSTL(elevs,w,h,exag,base);
     setProgress(88);
-    log(`building obj...`);
+    log('building obj...');
     objData=buildOBJ(elevs,w,h,exag,base);
     setProgress(100);
     const tris=(stlBuffer.byteLength-84)/50;
-    log(`${tris.toLocaleString()} triangles · stl ${(stlBuffer.byteLength/1024/1024).toFixed(2)}mb`,'ok');
-    log(`done.`,'ok');
+    log(`${tris.toLocaleString()} triangles · ${(stlBuffer.byteLength/1024/1024).toFixed(2)}mb`,'ok');
+    log('done.','ok');
     document.getElementById('dl-stl').style.display='block';
     document.getElementById('dl-obj').style.display='block';
     btn.textContent='Regenerate';btn.disabled=false;
   }catch(e){
-    log(`error: ${e.message}`,'err');
+    log('error: '+e.message,'err');
     btn.textContent='Generate';btn.disabled=false;
     setProgress(0);
   }
@@ -477,7 +452,7 @@ function downloadSTL(){
   a.href=URL.createObjectURL(new Blob([stlBuffer],{type:'application/octet-stream'}));
   a.download=`terrain_${sw.lat.toFixed(3)}_${sw.lng.toFixed(3)}.stl`;
   a.click();URL.revokeObjectURL(a.href);
-  log(`stl downloaded`,'ok');
+  log('stl downloaded','ok');
 }
 function downloadOBJ(){
   if(!objData||!currentRect)return;
@@ -486,7 +461,7 @@ function downloadOBJ(){
   a.href=URL.createObjectURL(new Blob([objData],{type:'text/plain'}));
   a.download=`terrain_${sw.lat.toFixed(3)}_${sw.lng.toFixed(3)}.obj`;
   a.click();URL.revokeObjectURL(a.href);
-  log(`obj downloaded`,'ok');
+  log('obj downloaded','ok');
 }
 </script>
 </body>
