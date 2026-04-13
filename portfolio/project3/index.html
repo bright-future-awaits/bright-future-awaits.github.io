@@ -21,11 +21,15 @@ header{padding:1rem 2rem;border-bottom:1px solid var(--border);display:flex;alig
 .tagline{font-size:0.7rem;color:var(--muted);font-family:var(--mono)}
 .workspace{display:grid;grid-template-columns:1fr 1fr 300px;flex:1;min-height:0;overflow:hidden}
 .pane{position:relative;border-right:1px solid var(--border)}
-.pane-label{position:absolute;top:10px;left:12px;z-index:999;font-family:var(--mono);font-size:0.6rem;color:var(--muted);background:rgba(10,10,10,0.8);padding:3px 8px;border-radius:3px;border:1px solid var(--border);letter-spacing:0.06em}
+.pane-label{position:absolute;top:10px;left:12px;z-index:999;font-family:var(--mono);font-size:0.6rem;color:var(--muted);background:rgba(10,10,10,0.85);padding:3px 8px;border-radius:3px;border:1px solid var(--border);letter-spacing:0.06em}
 #map{width:100%;height:100%}
+.map-style-bar{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:999;display:flex;gap:4px;background:rgba(10,10,10,0.9);padding:5px;border-radius:5px;border:1px solid var(--border)}
+.ms-btn{font-family:var(--mono);font-size:0.58rem;padding:4px 8px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.ms-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
+.ms-btn:hover:not(.active){color:var(--text);border-color:#555}
 #preview-pane{background:#0d0d0d;display:flex;align-items:center;justify-content:center}
 #preview-canvas{width:100%;height:100%;display:block}
-.preview-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:0.6rem;color:var(--muted);background:rgba(10,10,10,0.8);padding:3px 10px;border-radius:3px;border:1px solid var(--border);white-space:nowrap}
+.preview-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:0.6rem;color:var(--muted);background:rgba(10,10,10,0.85);padding:3px 10px;border-radius:3px;border:1px solid var(--border);white-space:nowrap}
 .empty-preview{text-align:center;color:var(--muted);font-family:var(--mono);font-size:0.7rem;line-height:2;pointer-events:none;position:absolute}
 .empty-preview .icon{font-size:2rem;opacity:0.3;display:block;margin-bottom:0.5rem}
 .panel{background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
@@ -53,6 +57,7 @@ input[type=range]{flex:1;accent-color:var(--accent)}
 .log{flex:1;overflow-y:auto;padding:0.6rem 1rem;font-family:var(--mono);font-size:0.62rem;line-height:1.9;color:var(--muted)}
 .log-line.ok{color:var(--accent)}
 .log-line.err{color:#ff4444}
+.log-line.warn{color:#ffaa00}
 .log-line.info{color:#888}
 .progress-bar{height:2px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:0.5rem}
 .progress-fill{height:100%;background:var(--accent);width:0%;transition:width 0.3s;border-radius:2px}
@@ -67,10 +72,21 @@ input[type=range]{flex:1;accent-color:var(--accent)}
   </div>
 </header>
 <div class="workspace">
+
+  <!-- MAP PANE -->
   <div class="pane">
     <div class="pane-label">01 — SELECT AREA</div>
     <div id="map"></div>
+    <div class="map-style-bar">
+      <button class="ms-btn active" onclick="setMapStyle('topo',this)">Topo</button>
+      <button class="ms-btn" onclick="setMapStyle('satellite',this)">Satellite</button>
+      <button class="ms-btn" onclick="setMapStyle('usgs',this)">USGS</button>
+      <button class="ms-btn" onclick="setMapStyle('osm',this)">Street</button>
+      <button class="ms-btn" onclick="setMapStyle('dark',this)">Dark</button>
+    </div>
   </div>
+
+  <!-- PREVIEW PANE -->
   <div class="pane" id="preview-pane">
     <div class="pane-label">02 — 3D PREVIEW</div>
     <canvas id="preview-canvas"></canvas>
@@ -80,14 +96,14 @@ input[type=range]{flex:1;accent-color:var(--accent)}
       generate terrain<br>to preview here
     </div>
   </div>
+
+  <!-- CONTROL PANEL -->
   <div class="panel">
     <div class="ps">
       <div class="label">Selection</div>
       <div class="no-sel" id="no-sel">Draw a rectangle on the map</div>
       <div id="sel-stats" style="display:none">
         <div class="stat-grid">
-          <div class="stat"><div class="stat-val" id="stat-w">—</div><div class="stat-label">Width km</div></div>
-          <div class="stat"><div class="stat-val" id="stat-h">—</div><div class="stat-label">Height km</div></div>
           <div class="stat"><div class="stat-val" id="stat-area">—</div><div class="stat-label">Area km²</div></div>
           <div class="stat"><div class="stat-val" id="stat-pts">—</div><div class="stat-label">Grid</div></div>
         </div>
@@ -96,11 +112,11 @@ input[type=range]{flex:1;accent-color:var(--accent)}
     <div class="ps">
       <div class="label">Resolution</div>
       <div class="pills">
-        <div class="pill" data-res="1" onclick="setRes(this)">1m</div>
-        <div class="pill active" data-res="10" onclick="setRes(this)">10m</div>
+        <div class="pill active" data-res="1" onclick="setRes(this)">1m</div>
+        <div class="pill" data-res="10" onclick="setRes(this)">10m</div>
         <div class="pill" data-res="30" onclick="setRes(this)">30m</div>
       </div>
-      <div class="hint">1m = lidar where available, auto-falls back to 10m</div>
+      <div class="hint" id="res-hint">1m lidar — falls back to 10m if unavailable</div>
     </div>
     <div class="ps">
       <div class="label">Vertical exaggeration</div>
@@ -136,17 +152,31 @@ input[type=range]{flex:1;accent-color:var(--accent)}
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-let map, drawLayer, currentRect=null, stlBuffer=null, objData=null;
-let selectedRes=10;
+let map, drawLayer, tileLayer, currentRect=null, stlBuffer=null, objString=null;
+let selectedRes=1;
 let renderer, scene, camera, isDragging=false, prevMouse={x:0,y:0}, rotX=0.4, rotY=0.4, camDist=180;
 let terrainMesh=null;
 
-// ── MAP ──────────────────────────────────────────────────────────
+// ── MAP STYLES ────────────────────────────────────────────────────
+const MAP_STYLES = {
+  topo:      { url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', max:17, attr:'© OSM © OpenTopoMap' },
+  satellite: { url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', max:19, attr:'© Esri' },
+  usgs:      { url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}', max:16, attr:'© USGS' },
+  osm:       { url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', max:19, attr:'© OpenStreetMap' },
+  dark:      { url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', max:19, attr:'© OSM © CARTO' },
+};
+
 map = L.map('map',{zoomControl:true}).setView([36.1,-112.1],10);
-L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{
-  attribution:'© OpenStreetMap © OpenTopoMap',
-  maxZoom:17
-}).addTo(map);
+tileLayer = L.tileLayer(MAP_STYLES.topo.url,{attribution:MAP_STYLES.topo.attr,maxZoom:MAP_STYLES.topo.max}).addTo(map);
+
+function setMapStyle(key, btn){
+  document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const s=MAP_STYLES[key];
+  map.removeLayer(tileLayer);
+  tileLayer=L.tileLayer(s.url,{attribution:s.attr,maxZoom:s.max}).addTo(map);
+}
+
 drawLayer = new L.FeatureGroup();
 map.addLayer(drawLayer);
 const dc = new L.Control.Draw({
@@ -190,33 +220,20 @@ canvas.addEventListener('mousemove',e=>{
   prevMouse={x:e.clientX,y:e.clientY};
 });
 canvas.addEventListener('wheel',e=>{camDist=Math.max(30,Math.min(600,camDist+e.deltaY*0.3));e.preventDefault();},{passive:false});
-
 (function animate(){
   requestAnimationFrame(animate);
   if(terrainMesh){
-    camera.position.set(
-      Math.sin(rotY)*Math.cos(rotX)*camDist,
-      Math.sin(rotX)*camDist,
-      Math.cos(rotY)*Math.cos(rotX)*camDist
-    );
+    camera.position.set(Math.sin(rotY)*Math.cos(rotX)*camDist,Math.sin(rotX)*camDist,Math.cos(rotY)*Math.cos(rotX)*camDist);
     camera.lookAt(terrainMesh.position);
   }
   renderer.render(scene,camera);
 })();
 
-// ── SAFE MIN/MAX (fixes call stack overflow on large arrays) ──────
-function arrayMin(arr){
-  let m=Infinity;
-  for(let i=0;i<arr.length;i++){const v=arr[i];if(v>-9999&&!isNaN(v)&&v<m)m=v;}
-  return m;
-}
-function arrayMax(arr){
-  let m=-Infinity;
-  for(let i=0;i<arr.length;i++){const v=arr[i];if(v>-9999&&!isNaN(v)&&v>m)m=v;}
-  return m;
-}
+// ── SAFE MIN/MAX ──────────────────────────────────────────────────
+function arrayMin(arr){let m=Infinity;for(let i=0;i<arr.length;i++){const v=arr[i];if(v>-9000&&isFinite(v)&&v<m)m=v;}return m;}
+function arrayMax(arr){let m=-Infinity;for(let i=0;i<arr.length;i++){const v=arr[i];if(v>-9000&&isFinite(v)&&v>m)m=v;}return m;}
 
-// ── UTILS ────────────────────────────────────────────────────────
+// ── UTILS ─────────────────────────────────────────────────────────
 function haverDist(lat1,lon1,lat2,lon2){
   const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
   const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
@@ -228,13 +245,12 @@ function log(msg,type='info'){
   el.appendChild(d);el.scrollTop=el.scrollHeight;
 }
 function setProgress(p){document.getElementById('prog').style.width=p+'%'}
+
 function updateStats(){
   if(!currentRect)return;
   const sw=currentRect.getSouthWest(),ne=currentRect.getNorthEast();
   const w=haverDist(sw.lat,sw.lng,sw.lat,ne.lng);
   const h=haverDist(sw.lat,sw.lng,ne.lat,sw.lng);
-  document.getElementById('stat-w').textContent=w.toFixed(2);
-  document.getElementById('stat-h').textContent=h.toFixed(2);
   document.getElementById('stat-area').textContent=(w*h).toFixed(2);
   const px=Math.min(Math.round(w*1000/selectedRes),512);
   const py=Math.min(Math.round(h*1000/selectedRes),512);
@@ -245,7 +261,7 @@ function updateStats(){
   btn.disabled=false;btn.textContent='Generate';
   document.getElementById('dl-stl').style.display='none';
   document.getElementById('dl-obj').style.display='none';
-  stlBuffer=null;objData=null;
+  stlBuffer=null;objString=null;
 }
 function showNoSel(){
   document.getElementById('no-sel').style.display='block';
@@ -255,117 +271,263 @@ function showNoSel(){
 }
 function setRes(el){
   document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
-  el.classList.add('active');selectedRes=parseInt(el.dataset.res);
+  el.classList.add('active');
+  selectedRes=parseInt(el.dataset.res);
+  const hints={1:'1m lidar — falls back to 10m if unavailable',10:'10m nationwide coverage',30:'30m — fastest, largest areas'};
+  document.getElementById('res-hint').textContent=hints[selectedRes];
   if(currentRect)updateStats();
 }
 
-// ── FETCH ────────────────────────────────────────────────────────
-async function fetchElevation(bounds,res){
+// ── FETCH ELEVATION ───────────────────────────────────────────────
+async function fetchElevation(bounds, res){
   const sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
   const pxW=Math.min(Math.round((ne.lng-sw.lng)*111000/res),512);
   const pxH=Math.min(Math.round((ne.lat-sw.lat)*111000/res),512);
   const bbox=`${sw.lng},${sw.lat},${ne.lng},${ne.lat}`;
-  const url=`https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage?bbox=${bbox}&bboxSR=4326&size=${pxW},${pxH}&imageSR=4326&format=tiff&pixelType=F32&noDataInterpretation=esriNoDataMatchAny&interpolation=+RSP_BilinearInterpolation&f=json`;
-  log(`requesting ${pxW}×${pxH} grid from USGS...`);
+  const url=`https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage`+
+    `?bbox=${bbox}&bboxSR=4326&size=${pxW},${pxH}&imageSR=4326`+
+    `&format=tiff&pixelType=F32&noDataInterpretation=esriNoDataMatchAny`+
+    `&interpolation=+RSP_BilinearInterpolation&f=json`;
+  log(`requesting ${pxW}×${pxH} grid at ${res}m from USGS...`);
   const meta=await fetch(url).then(r=>r.json());
-  if(!meta.href)throw new Error('USGS returned no image. Try a smaller area.');
+  if(!meta.href)throw new Error('USGS returned no image URL. Try a smaller area.');
   log('downloading geotiff...');
   const buf=await fetch(meta.href).then(r=>r.arrayBuffer());
   log(`${(buf.byteLength/1024).toFixed(0)}kb received`,'ok');
   return {buf,width:pxW,height:pxH};
 }
 
-// ── PARSE TIFF ───────────────────────────────────────────────────
-function parseTiff(buf,width,height){
+// ── PARSE TIFF (handles both stripped and tiled layouts) ──────────
+function parseTiff(buf, fallbackW, fallbackH){
   const view=new DataView(buf);
   const le=(view.getUint16(0,false)===0x4949);
+  if(view.getUint16(0,false)!==0x4949 && view.getUint16(0,false)!==0x4D4D){
+    throw new Error('Not a valid TIFF file');
+  }
   let off=view.getUint32(4,le);
-  const cnt=view.getUint16(off,le);off+=2;
-  let stripOffsets=[],stripCounts=[];
+  const cnt=view.getUint16(off,le);
+  off+=2;
+
+  let imgW=fallbackW, imgH=fallbackH;
+  let stripOffsets=[], stripByteCounts=[];
+  let tileOffsets=[], tileByteCounts=[], tileW=0, tileH=0;
+  let bitsPerSample=32, samplesPerPixel=1, sampleFormat=3;
+  let compression=1;
+
   for(let i=0;i<cnt;i++){
-    const tag=view.getUint16(off,le),type=view.getUint16(off+2,le),n=view.getUint32(off+4,le),vo=off+8;
-    const rv=()=>type===3?view.getUint16(vo,le):view.getUint32(vo,le);
-    if(tag===256)width=rv();
-    else if(tag===257)height=rv();
-    else if(tag===273){if(n===1)stripOffsets=[view.getUint32(vo,le)];else{const o=view.getUint32(vo,le);for(let j=0;j<n;j++)stripOffsets.push(view.getUint32(o+j*4,le));}}
-    else if(tag===279){if(n===1)stripCounts=[view.getUint32(vo,le)];else{const o=view.getUint32(vo,le);for(let j=0;j<n;j++)stripCounts.push(view.getUint32(o+j*4,le));}}
+    const tag=view.getUint16(off,le);
+    const type=view.getUint16(off+2,le);
+    const n=view.getUint32(off+4,le);
+    const vo=off+8;
+
+    // helper: read value or offset-dereferenced values
+    const readShort=()=>view.getUint16(vo,le);
+    const readLong=()=>view.getUint32(vo,le);
+    const readVal=()=>type===3?readShort():readLong();
+    const readArray=(readFn)=>{
+      if(n===1) return [readVal()];
+      const arrOff=view.getUint32(vo,le);
+      const arr=[];
+      for(let j=0;j<n;j++) arr.push(type===3?view.getUint16(arrOff+j*2,le):view.getUint32(arrOff+j*4,le));
+      return arr;
+    };
+
+    if(tag===256) imgW=readVal();
+    else if(tag===257) imgH=readVal();
+    else if(tag===258) bitsPerSample=readVal();
+    else if(tag===259) compression=readVal();
+    else if(tag===277) samplesPerPixel=readVal();
+    else if(tag===278){} // rows per strip — ignore
+    else if(tag===273) stripOffsets=readArray();
+    else if(tag===279) stripByteCounts=readArray();
+    else if(tag===322) tileW=readVal();
+    else if(tag===323) tileH=readVal();
+    else if(tag===324) tileOffsets=readArray();
+    else if(tag===325) tileByteCounts=readArray();
+    else if(tag===339) sampleFormat=readVal();
+
     off+=12;
   }
-  const elevs=new Float32Array(width*height);
-  let pi=0;
-  for(let s=0;s<stripOffsets.length;s++){
-    const f=new Float32Array(buf,stripOffsets[s],stripCounts[s]/4);
-    for(let k=0;k<f.length;k++)elevs[pi++]=f[k];
+
+  if(compression!==1){
+    throw new Error(`TIFF compression ${compression} not supported. Try a smaller area or different resolution.`);
   }
-  return {elevs,width,height};
+
+  const elevs=new Float32Array(imgW*imgH);
+  const bytesPerSample=bitsPerSample/8;
+
+  // TILED layout
+  if(tileOffsets.length>0 && tileW>0 && tileH>0){
+    log(`tiled tiff: ${imgW}×${imgH}, tile ${tileW}×${tileH}`);
+    const tilesAcross=Math.ceil(imgW/tileW);
+    const tilesDown=Math.ceil(imgH/tileH);
+    for(let ty=0;ty<tilesDown;ty++){
+      for(let tx=0;tx<tilesAcross;tx++){
+        const tIdx=ty*tilesAcross+tx;
+        if(tIdx>=tileOffsets.length) continue;
+        const tOff=tileOffsets[tIdx];
+        const tCount=tileByteCounts[tIdx]/bytesPerSample;
+        const tData=new Float32Array(buf,tOff,tCount);
+        const xStart=tx*tileW, yStart=ty*tileH;
+        for(let py=0;py<tileH;py++){
+          for(let px=0;px<tileW;px++){
+            const imgX=xStart+px, imgY=yStart+py;
+            if(imgX<imgW && imgY<imgH){
+              elevs[imgY*imgW+imgX]=tData[py*tileW+px];
+            }
+          }
+        }
+      }
+    }
+  }
+  // STRIPPED layout
+  else if(stripOffsets.length>0){
+    log(`stripped tiff: ${imgW}×${imgH}, ${stripOffsets.length} strip(s)`);
+    let pi=0;
+    for(let s=0;s<stripOffsets.length;s++){
+      const sOff=stripOffsets[s];
+      const sCount=stripByteCounts[s]/bytesPerSample;
+      const sData=new Float32Array(buf,sOff,sCount);
+      for(let k=0;k<sData.length;k++) elevs[pi++]=sData[k];
+    }
+  }
+  else {
+    throw new Error('Could not find pixel data in TIFF. The USGS response may have been malformed.');
+  }
+
+  // Sanity check — if all values are the same, something went wrong
+  const minV=arrayMin(elevs), maxV=arrayMax(elevs);
+  if(Math.abs(maxV-minV)<0.01){
+    throw new Error(`Elevation range is flat (${minV.toFixed(1)}m). TIFF may not have parsed correctly.`);
+  }
+  log(`elevation range: ${minV.toFixed(0)}m – ${maxV.toFixed(0)}m`,'ok');
+
+  return {elevs, width:imgW, height:imgH};
 }
 
-// ── BUILD STL ────────────────────────────────────────────────────
-function buildSTL(elevs,w,h,exag,baseThick){
+// ── GEOMETRY HELPERS ──────────────────────────────────────────────
+// Returns {verts: Float32Array, indices: Uint32Array} for a watertight terrain block
+function buildGeometry(elevs, w, h, exag, baseThick){
   const scaleXY=100/Math.max(w,h);
-  const minH=arrayMin(elevs),range=(arrayMax(elevs)-minH)||1;
+  const minH=arrayMin(elevs), range=(arrayMax(elevs)-minH)||1;
   const scaleZ=(30/range)*exag;
-  const normals=[],verts=[];
-  function tri(a,b,c){
-    const ab=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],ac=[c[0]-a[0],c[1]-a[1],c[2]-a[2]];
-    const n=[ab[1]*ac[2]-ab[2]*ac[1],ab[2]*ac[0]-ab[0]*ac[2],ab[0]*ac[1]-ab[1]*ac[0]];
-    const l=Math.sqrt(n[0]**2+n[1]**2+n[2]**2)||1;
-    normals.push([n[0]/l,n[1]/l,n[2]/l]);verts.push(a,b,c);
+  const W=(w-1)*scaleXY, H=(h-1)*scaleXY;
+
+  const getZ=(x,y)=>{
+    const v=elevs[y*w+x];
+    return (v>-9000&&isFinite(v))?(v-minH)*scaleZ+baseThick:baseThick;
+  };
+
+  // Vertex layout:
+  // 0..w*h-1         : top surface (terrain)
+  // w*h..2*w*h-1     : bottom surface (flat at z=0, same XY as top)
+  const nVerts=w*h*2;
+  const verts=new Float32Array(nVerts*3);
+
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const i=y*w+x;
+    // top
+    verts[i*3+0]=x*scaleXY;
+    verts[i*3+1]=(h-1-y)*scaleXY;
+    verts[i*3+2]=getZ(x,y);
+    // bottom (same XY, z=0)
+    const j=w*h+i;
+    verts[j*3+0]=x*scaleXY;
+    verts[j*3+1]=(h-1-y)*scaleXY;
+    verts[j*3+2]=0;
   }
-  const ge=(x,y)=>{const v=elevs[y*w+x];return(v<-9999||isNaN(v))?minH:v;};
-  const pt=(x,y)=>[x*scaleXY,(h-1-y)*scaleXY,(ge(x,y)-minH)*scaleZ+baseThick];
-  for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
-    const a=pt(x,y),b=pt(x+1,y),c=pt(x,y+1),d=pt(x+1,y+1);
-    tri(a,c,b);tri(b,c,d);
+
+  const tris=[];
+  const push=(a,b,c)=>tris.push(a,b,c);
+
+  // TOP surface
+  for(let y=0;y<h-1;y++) for(let x=0;x<w-1;x++){
+    const a=y*w+x, b=a+1, c=(y+1)*w+x, d=c+1;
+    push(a,c,b); push(b,c,d);
   }
-  const W=(w-1)*scaleXY,H=(h-1)*scaleXY;
-  tri([0,0,0],[W,0,0],[W,H,0]);tri([0,0,0],[W,H,0],[0,H,0]);
+
+  // BOTTOM surface (reversed winding for outward normals)
+  const B=w*h;
+  for(let y=0;y<h-1;y++) for(let x=0;x<w-1;x++){
+    const a=B+y*w+x, b=a+1, c=B+(y+1)*w+x, d=c+1;
+    push(a,b,c); push(b,d,c);
+  }
+
+  // WALLS — 4 sides
+  // Front (y=0, top row in image = y=h-1 after flip, but geometrically y=0 edge)
   for(let x=0;x<w-1;x++){
-    tri(pt(x,0),[pt(x,0)[0],pt(x,0)[1],0],[pt(x+1,0)[0],pt(x+1,0)[1],0]);
-    tri(pt(x,0),[pt(x+1,0)[0],pt(x+1,0)[1],0],pt(x+1,0));
+    const t0=x, t1=x+1;            // top edge
+    const b0=B+x, b1=B+x+1;       // bottom edge
+    push(t0,b0,t1); push(t1,b0,b1);
   }
-  for(let x=0;x<w-1;x++){const y=h-1;
-    tri([pt(x,y)[0],pt(x,y)[1],0],pt(x,y),[pt(x+1,y)[0],pt(x+1,y)[1],0]);
-    tri([pt(x+1,y)[0],pt(x+1,y)[1],0],pt(x,y),pt(x+1,y));
+  // Back (y=h-1)
+  for(let x=0;x<w-1;x++){
+    const t0=(h-1)*w+x, t1=t0+1;
+    const b0=B+(h-1)*w+x, b1=b0+1;
+    push(t0,t1,b0); push(t1,b1,b0);
   }
+  // Left (x=0)
   for(let y=0;y<h-1;y++){
-    tri([0,pt(0,y)[1],0],[0,pt(0,y+1)[1],0],pt(0,y));
-    tri([0,pt(0,y+1)[1],0],pt(0,y+1),pt(0,y));
+    const t0=y*w, t1=(y+1)*w;
+    const b0=B+y*w, b1=B+(y+1)*w;
+    push(t0,t1,b0); push(t1,b1,b0);
   }
-  for(let y=0;y<h-1;y++){const x=w-1;
-    tri([pt(x,y)[0],pt(x,y)[1],0],pt(x,y),[pt(x,y+1)[0],pt(x,y+1)[1],0]);
-    tri([pt(x,y+1)[0],pt(x,y+1)[1],0],pt(x,y),pt(x,y+1));
+  // Right (x=w-1)
+  for(let y=0;y<h-1;y++){
+    const t0=y*w+(w-1), t1=(y+1)*w+(w-1);
+    const b0=B+y*w+(w-1), b1=B+(y+1)*w+(w-1);
+    push(t0,b0,t1); push(t1,b0,b1);
   }
-  const tc=normals.length,ab=new ArrayBuffer(84+tc*50),dv=new DataView(ab);
-  let o=80;dv.setUint32(o,tc,true);o+=4;
-  for(let i=0;i<tc;i++){
-    const n=normals[i];
-    dv.setFloat32(o,n[0],true);dv.setFloat32(o+4,n[1],true);dv.setFloat32(o+8,n[2],true);o+=12;
-    for(let v=0;v<3;v++){const p=verts[i*3+v];dv.setFloat32(o,p[0],true);dv.setFloat32(o+4,p[1],true);dv.setFloat32(o+8,p[2],true);o+=12;}
-    dv.setUint16(o,0,true);o+=2;
+
+  return {verts, indices:new Uint32Array(tris)};
+}
+
+// ── BUILD STL ─────────────────────────────────────────────────────
+function buildSTL(elevs,w,h,exag,baseThick){
+  const {verts,indices}=buildGeometry(elevs,w,h,exag,baseThick);
+  const triCount=indices.length/3;
+  const ab=new ArrayBuffer(84+triCount*50);
+  const dv=new DataView(ab);
+  // header (80 bytes) left as zeros
+  dv.setUint32(80,triCount,true);
+  let off=84;
+  for(let i=0;i<triCount;i++){
+    const ai=indices[i*3]*3, bi=indices[i*3+1]*3, ci=indices[i*3+2]*3;
+    const ax=verts[ai],ay=verts[ai+1],az=verts[ai+2];
+    const bx=verts[bi],by=verts[bi+1],bz=verts[bi+2];
+    const cx=verts[ci],cy=verts[ci+1],cz=verts[ci+2];
+    // normal
+    const ux=bx-ax,uy=by-ay,uz=bz-az;
+    const vx=cx-ax,vy=cy-ay,vz=cz-az;
+    const nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx;
+    const nl=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
+    dv.setFloat32(off,nx/nl,true);dv.setFloat32(off+4,ny/nl,true);dv.setFloat32(off+8,nz/nl,true);off+=12;
+    dv.setFloat32(off,ax,true);dv.setFloat32(off+4,ay,true);dv.setFloat32(off+8,az,true);off+=12;
+    dv.setFloat32(off,bx,true);dv.setFloat32(off+4,by,true);dv.setFloat32(off+8,bz,true);off+=12;
+    dv.setFloat32(off,cx,true);dv.setFloat32(off+4,cy,true);dv.setFloat32(off+8,cz,true);off+=12;
+    dv.setUint16(off,0,true);off+=2;
   }
   return ab;
 }
 
-// ── BUILD OBJ ────────────────────────────────────────────────────
+// ── BUILD OBJ (watertight with base + walls) ──────────────────────
 function buildOBJ(elevs,w,h,exag,baseThick){
-  const scaleXY=100/Math.max(w,h);
-  const minH=arrayMin(elevs),range=(arrayMax(elevs)-minH)||1;
-  const scaleZ=(30/range)*exag;
-  const ge=(x,y)=>{const v=elevs[y*w+x];return(v<-9999||isNaN(v))?minH:v;};
-  const lines=['# TerrainForge OBJ','# Source: USGS 3DEP',''];
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-    lines.push(`v ${(x*scaleXY).toFixed(4)} ${((h-1-y)*scaleXY).toFixed(4)} ${((ge(x,y)-minH)*scaleZ+baseThick).toFixed(4)}`);
+  const {verts,indices}=buildGeometry(elevs,w,h,exag,baseThick);
+  const lines=['# TerrainForge OBJ','# Source: USGS 3DEP','# Watertight mesh with base and walls',''];
+  const nVerts=verts.length/3;
+  for(let i=0;i<nVerts;i++){
+    lines.push(`v ${verts[i*3].toFixed(4)} ${verts[i*3+1].toFixed(4)} ${verts[i*3+2].toFixed(4)}`);
   }
   lines.push('');
-  for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
-    const a=y*w+x+1,b=a+1,c=(y+1)*w+x+1,d=c+1;
-    lines.push(`f ${a} ${c} ${b}`);lines.push(`f ${b} ${c} ${d}`);
+  const triCount=indices.length/3;
+  for(let i=0;i<triCount;i++){
+    // OBJ is 1-indexed
+    lines.push(`f ${indices[i*3]+1} ${indices[i*3+1]+1} ${indices[i*3+2]+1}`);
   }
   return lines.join('\n');
 }
 
-// ── PREVIEW ──────────────────────────────────────────────────────
+// ── PREVIEW ───────────────────────────────────────────────────────
 function showPreview(elevs,w,h,exag,baseThick){
   if(terrainMesh){scene.remove(terrainMesh);terrainMesh.geometry.dispose();terrainMesh.material.dispose();terrainMesh=null;}
   const maxPts=200,stepX=Math.max(1,Math.floor(w/maxPts)),stepY=Math.max(1,Math.floor(h/maxPts));
@@ -374,9 +536,9 @@ function showPreview(elevs,w,h,exag,baseThick){
   const scaleXY=100/Math.max(cols,rows),scaleZ=(30/range)*exag;
   const positions=new Float32Array(cols*rows*3),colors=new Float32Array(cols*rows*3);
   let idx=0;
-  for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
+  for(let row=0;row<rows;row++) for(let col=0;col<cols;col++){
     const v=elevs[(row*stepY)*w+(col*stepX)];
-    const z=(v>-9999&&!isNaN(v))?(v-minH)*scaleZ+baseThick:baseThick;
+    const z=(v>-9000&&isFinite(v))?(v-minH)*scaleZ+baseThick:baseThick;
     positions[idx*3]=(col-cols/2)*scaleXY;
     positions[idx*3+1]=z-15;
     positions[idx*3+2]=(row-rows/2)*scaleXY;
@@ -384,13 +546,13 @@ function showPreview(elevs,w,h,exag,baseThick){
     colors[idx*3]=0.1+t*0.6;colors[idx*3+1]=0.3+t*0.5;colors[idx*3+2]=0.05;
     idx++;
   }
-  const indices=[];
-  for(let row=0;row<rows-1;row++)for(let col=0;col<cols-1;col++){
+  const inds=[];
+  for(let row=0;row<rows-1;row++) for(let col=0;col<cols-1;col++){
     const a=row*cols+col,b=a+1,c=(row+1)*cols+col,d=c+1;
-    indices.push(a,c,b,b,c,d);
+    inds.push(a,c,b,b,c,d);
   }
   const geo=new THREE.BufferGeometry();
-  geo.setIndex(indices);
+  geo.setIndex(inds);
   geo.setAttribute('position',new THREE.BufferAttribute(positions,3));
   geo.setAttribute('color',new THREE.BufferAttribute(colors,3));
   geo.computeVertexNormals();
@@ -401,50 +563,76 @@ function showPreview(elevs,w,h,exag,baseThick){
   document.getElementById('preview-hint').style.display='block';
 }
 
-// ── GENERATE ─────────────────────────────────────────────────────
+// ── GENERATE ──────────────────────────────────────────────────────
 async function generate(){
   if(!currentRect)return;
-  stlBuffer=null;objData=null;
+  stlBuffer=null;objString=null;
   document.getElementById('dl-stl').style.display='none';
   document.getElementById('dl-obj').style.display='none';
   document.getElementById('log').innerHTML='';
   const btn=document.getElementById('gen-btn');
   btn.disabled=true;btn.textContent='generating...';
   setProgress(5);
+
+  let res=selectedRes;
   try{
     const sw=currentRect.getSouthWest(),ne=currentRect.getNorthEast();
     log(`${sw.lat.toFixed(4)}°N ${sw.lng.toFixed(4)}°W → ${ne.lat.toFixed(4)}°N ${ne.lng.toFixed(4)}°W`);
-    const {buf,width,height}=await fetchElevation(currentRect,selectedRes);
-    setProgress(45);
-    log('parsing tiff...');
-    const {elevs,width:w,height:h}=parseTiff(buf,width,height);
+
+    let buf,width,height,parseResult;
+
+    // Try selected resolution, auto-fallback from 1m → 10m if needed
+    try{
+      ({buf,width,height}=await fetchElevation(currentRect,res));
+      setProgress(40);
+      log('parsing tiff...');
+      parseResult=parseTiff(buf,width,height);
+    } catch(e){
+      if(res===1){
+        log(`1m unavailable (${e.message}) — falling back to 10m`,'warn');
+        res=10;
+        ({buf,width,height}=await fetchElevation(currentRect,res));
+        setProgress(40);
+        log('parsing tiff...');
+        parseResult=parseTiff(buf,width,height);
+      } else {
+        throw e;
+      }
+    }
+
+    const {elevs,width:w,height:h}=parseResult;
     log(`${w}×${h} grid parsed`,'ok');
-    setProgress(60);
+    setProgress(58);
+
     const exag=parseFloat(document.getElementById('exag').value);
     const base=parseInt(document.getElementById('base').value);
+
     log('building preview...');
     showPreview(elevs,w,h,exag,base);
-    setProgress(72);
+    setProgress(68);
+
     log('building stl...');
     stlBuffer=buildSTL(elevs,w,h,exag,base);
-    setProgress(88);
+    setProgress(82);
+
     log('building obj...');
-    objData=buildOBJ(elevs,w,h,exag,base);
+    objString=buildOBJ(elevs,w,h,exag,base);
     setProgress(100);
+
     const tris=(stlBuffer.byteLength-84)/50;
     log(`${tris.toLocaleString()} triangles · ${(stlBuffer.byteLength/1024/1024).toFixed(2)}mb`,'ok');
     log('done.','ok');
     document.getElementById('dl-stl').style.display='block';
     document.getElementById('dl-obj').style.display='block';
     btn.textContent='Regenerate';btn.disabled=false;
-  }catch(e){
+  } catch(e){
     log('error: '+e.message,'err');
     btn.textContent='Generate';btn.disabled=false;
     setProgress(0);
   }
 }
 
-// ── DOWNLOAD ─────────────────────────────────────────────────────
+// ── DOWNLOAD ──────────────────────────────────────────────────────
 function downloadSTL(){
   if(!stlBuffer||!currentRect)return;
   const sw=currentRect.getSouthWest();
@@ -455,10 +643,10 @@ function downloadSTL(){
   log('stl downloaded','ok');
 }
 function downloadOBJ(){
-  if(!objData||!currentRect)return;
+  if(!objString||!currentRect)return;
   const sw=currentRect.getSouthWest();
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([objData],{type:'text/plain'}));
+  a.href=URL.createObjectURL(new Blob([objString],{type:'text/plain'}));
   a.download=`terrain_${sw.lat.toFixed(3)}_${sw.lng.toFixed(3)}.obj`;
   a.click();URL.revokeObjectURL(a.href);
   log('obj downloaded','ok');
