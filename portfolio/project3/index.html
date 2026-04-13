@@ -73,7 +73,6 @@ input[type=range]{flex:1;accent-color:var(--accent)}
 </header>
 <div class="workspace">
 
-  <!-- MAP PANE -->
   <div class="pane">
     <div class="pane-label">01 — SELECT AREA</div>
     <div id="map"></div>
@@ -86,7 +85,6 @@ input[type=range]{flex:1;accent-color:var(--accent)}
     </div>
   </div>
 
-  <!-- PREVIEW PANE -->
   <div class="pane" id="preview-pane">
     <div class="pane-label">02 — 3D PREVIEW</div>
     <canvas id="preview-canvas"></canvas>
@@ -97,7 +95,6 @@ input[type=range]{flex:1;accent-color:var(--accent)}
     </div>
   </div>
 
-  <!-- CONTROL PANEL -->
   <div class="panel">
     <div class="ps">
       <div class="label">Selection</div>
@@ -105,7 +102,7 @@ input[type=range]{flex:1;accent-color:var(--accent)}
       <div id="sel-stats" style="display:none">
         <div class="stat-grid">
           <div class="stat"><div class="stat-val" id="stat-area">—</div><div class="stat-label">Area km²</div></div>
-          <div class="stat"><div class="stat-val" id="stat-pts">—</div><div class="stat-label">Grid</div></div>
+          <div class="stat"><div class="stat-val" id="stat-pts">—</div><div class="stat-label">Grid samples</div></div>
         </div>
       </div>
     </div>
@@ -116,7 +113,7 @@ input[type=range]{flex:1;accent-color:var(--accent)}
         <div class="pill" data-res="10" onclick="setRes(this)">10m</div>
         <div class="pill" data-res="30" onclick="setRes(this)">30m</div>
       </div>
-      <div class="hint" id="res-hint">1m lidar — falls back to 10m if unavailable</div>
+      <div class="hint" id="res-hint">1m lidar — auto-falls back to 10m if unavailable</div>
     </div>
     <div class="ps">
       <div class="label">Vertical exaggeration</div>
@@ -157,41 +154,34 @@ let selectedRes=1;
 let renderer, scene, camera, isDragging=false, prevMouse={x:0,y:0}, rotX=0.4, rotY=0.4, camDist=180;
 let terrainMesh=null;
 
-// ── MAP STYLES ────────────────────────────────────────────────────
-const MAP_STYLES = {
-  topo:      { url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', max:17, attr:'© OSM © OpenTopoMap' },
-  satellite: { url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', max:19, attr:'© Esri' },
-  usgs:      { url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}', max:16, attr:'© USGS' },
-  osm:       { url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', max:19, attr:'© OpenStreetMap' },
-  dark:      { url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', max:19, attr:'© OSM © CARTO' },
+// ── MAP ───────────────────────────────────────────────────────────
+const MAP_STYLES={
+  topo:     {url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',max:17,attr:'© OSM © OpenTopoMap'},
+  satellite:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',max:19,attr:'© Esri'},
+  usgs:     {url:'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}',max:16,attr:'© USGS'},
+  osm:      {url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',max:19,attr:'© OpenStreetMap'},
+  dark:     {url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',max:19,attr:'© OSM © CARTO'},
 };
-
-map = L.map('map',{zoomControl:true}).setView([36.1,-112.1],10);
-tileLayer = L.tileLayer(MAP_STYLES.topo.url,{attribution:MAP_STYLES.topo.attr,maxZoom:MAP_STYLES.topo.max}).addTo(map);
-
-function setMapStyle(key, btn){
+map=L.map('map',{zoomControl:true}).setView([36.1,-112.1],10);
+tileLayer=L.tileLayer(MAP_STYLES.topo.url,{attribution:MAP_STYLES.topo.attr,maxZoom:MAP_STYLES.topo.max}).addTo(map);
+function setMapStyle(key,btn){
   document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   const s=MAP_STYLES[key];
   map.removeLayer(tileLayer);
   tileLayer=L.tileLayer(s.url,{attribution:s.attr,maxZoom:s.max}).addTo(map);
 }
-
-drawLayer = new L.FeatureGroup();
+drawLayer=new L.FeatureGroup();
 map.addLayer(drawLayer);
-const dc = new L.Control.Draw({
-  draw:{
-    rectangle:{shapeOptions:{color:'#ff3300',fillOpacity:0.15,weight:2.5}},
-    polyline:false,polygon:false,circle:false,circlemarker:false,marker:false
-  },
+map.addControl(new L.Control.Draw({
+  draw:{rectangle:{shapeOptions:{color:'#ff3300',fillOpacity:0.15,weight:2.5}},polyline:false,polygon:false,circle:false,circlemarker:false,marker:false},
   edit:{featureGroup:drawLayer}
-});
-map.addControl(dc);
+}));
 map.on(L.Draw.Event.CREATED,e=>{drawLayer.clearLayers();drawLayer.addLayer(e.layer);currentRect=e.layer.getBounds();updateStats()});
 map.on(L.Draw.Event.DELETED,()=>{currentRect=null;showNoSel()});
 map.on(L.Draw.Event.EDITED,e=>{e.layers.eachLayer(l=>{currentRect=l.getBounds()});updateStats()});
 
-// ── THREE.JS ─────────────────────────────────────────────────────
+// ── THREE.JS ──────────────────────────────────────────────────────
 const canvas=document.getElementById('preview-canvas');
 renderer=new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setClearColor(0x0d0d0d,1);
@@ -200,12 +190,10 @@ camera=new THREE.PerspectiveCamera(45,2,0.1,5000);
 scene.add(new THREE.AmbientLight(0xffffff,0.4));
 const dl=new THREE.DirectionalLight(0xc8ff00,0.8);dl.position.set(1,2,1);scene.add(dl);
 const dl2=new THREE.DirectionalLight(0xffffff,0.3);dl2.position.set(-1,1,-1);scene.add(dl2);
-
 function resizeRenderer(){
   const p=document.getElementById('preview-pane');
   renderer.setSize(p.clientWidth,p.clientHeight,false);
-  camera.aspect=p.clientWidth/p.clientHeight;
-  camera.updateProjectionMatrix();
+  camera.aspect=p.clientWidth/p.clientHeight;camera.updateProjectionMatrix();
 }
 resizeRenderer();
 window.addEventListener('resize',resizeRenderer);
@@ -214,10 +202,8 @@ canvas.addEventListener('mouseup',()=>isDragging=false);
 canvas.addEventListener('mouseleave',()=>isDragging=false);
 canvas.addEventListener('mousemove',e=>{
   if(!isDragging)return;
-  rotY+=(e.clientX-prevMouse.x)*0.008;
-  rotX+=(e.clientY-prevMouse.y)*0.008;
-  rotX=Math.max(-Math.PI/2,Math.min(Math.PI/2,rotX));
-  prevMouse={x:e.clientX,y:e.clientY};
+  rotY+=(e.clientX-prevMouse.x)*0.008;rotX+=(e.clientY-prevMouse.y)*0.008;
+  rotX=Math.max(-Math.PI/2,Math.min(Math.PI/2,rotX));prevMouse={x:e.clientX,y:e.clientY};
 });
 canvas.addEventListener('wheel',e=>{camDist=Math.max(30,Math.min(600,camDist+e.deltaY*0.3));e.preventDefault();},{passive:false});
 (function animate(){
@@ -229,11 +215,9 @@ canvas.addEventListener('wheel',e=>{camDist=Math.max(30,Math.min(600,camDist+e.d
   renderer.render(scene,camera);
 })();
 
-// ── SAFE MIN/MAX ──────────────────────────────────────────────────
-function arrayMin(arr){let m=Infinity;for(let i=0;i<arr.length;i++){const v=arr[i];if(v>-9000&&isFinite(v)&&v<m)m=v;}return m;}
-function arrayMax(arr){let m=-Infinity;for(let i=0;i<arr.length;i++){const v=arr[i];if(v>-9000&&isFinite(v)&&v>m)m=v;}return m;}
-
-// ── UTILS ─────────────────────────────────────────────────────────
+// ── HELPERS ───────────────────────────────────────────────────────
+function arrayMin(a){let m=Infinity;for(let i=0;i<a.length;i++){const v=a[i];if(v>-9000&&isFinite(v)&&v<m)m=v;}return m;}
+function arrayMax(a){let m=-Infinity;for(let i=0;i<a.length;i++){const v=a[i];if(v>-9000&&isFinite(v)&&v>m)m=v;}return m;}
 function haverDist(lat1,lon1,lat2,lon2){
   const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
   const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
@@ -246,14 +230,23 @@ function log(msg,type='info'){
 }
 function setProgress(p){document.getElementById('prog').style.width=p+'%'}
 
+// KEY FIX: alignment-safe Float32Array read
+// new Float32Array(buf, offset) throws if offset % 4 !== 0
+// USGS tile offsets are not guaranteed to be 4-byte aligned
+function readF32(buf, byteOffset, count){
+  if(byteOffset%4===0) return new Float32Array(buf,byteOffset,count);
+  // Copy bytes into a fresh aligned buffer
+  const tmp=new ArrayBuffer(count*4);
+  new Uint8Array(tmp).set(new Uint8Array(buf,byteOffset,count*4));
+  return new Float32Array(tmp);
+}
+
 function updateStats(){
   if(!currentRect)return;
   const sw=currentRect.getSouthWest(),ne=currentRect.getNorthEast();
-  const w=haverDist(sw.lat,sw.lng,sw.lat,ne.lng);
-  const h=haverDist(sw.lat,sw.lng,ne.lat,sw.lng);
+  const w=haverDist(sw.lat,sw.lng,sw.lat,ne.lng),h=haverDist(sw.lat,sw.lng,ne.lat,sw.lng);
   document.getElementById('stat-area').textContent=(w*h).toFixed(2);
-  const px=Math.min(Math.round(w*1000/selectedRes),512);
-  const py=Math.min(Math.round(h*1000/selectedRes),512);
+  const px=Math.min(Math.round(w*1000/selectedRes),512),py=Math.min(Math.round(h*1000/selectedRes),512);
   document.getElementById('stat-pts').textContent=px+'×'+py;
   document.getElementById('no-sel').style.display='none';
   document.getElementById('sel-stats').style.display='block';
@@ -271,15 +264,14 @@ function showNoSel(){
 }
 function setRes(el){
   document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
-  el.classList.add('active');
-  selectedRes=parseInt(el.dataset.res);
-  const hints={1:'1m lidar — falls back to 10m if unavailable',10:'10m nationwide coverage',30:'30m — fastest, largest areas'};
+  el.classList.add('active');selectedRes=parseInt(el.dataset.res);
+  const hints={1:'1m lidar — auto-falls back to 10m if unavailable',10:'10m nationwide coverage',30:'30m — fastest, largest areas'};
   document.getElementById('res-hint').textContent=hints[selectedRes];
   if(currentRect)updateStats();
 }
 
-// ── FETCH ELEVATION ───────────────────────────────────────────────
-async function fetchElevation(bounds, res){
+// ── FETCH ─────────────────────────────────────────────────────────
+async function fetchElevation(bounds,res){
   const sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
   const pxW=Math.min(Math.round((ne.lng-sw.lng)*111000/res),512);
   const pxH=Math.min(Math.round((ne.lat-sw.lat)*111000/res),512);
@@ -288,277 +280,209 @@ async function fetchElevation(bounds, res){
     `?bbox=${bbox}&bboxSR=4326&size=${pxW},${pxH}&imageSR=4326`+
     `&format=tiff&pixelType=F32&noDataInterpretation=esriNoDataMatchAny`+
     `&interpolation=+RSP_BilinearInterpolation&f=json`;
-  log(`requesting ${pxW}×${pxH} grid at ${res}m from USGS...`);
+  log(`requesting ${pxW}×${pxH} grid at ${res}m...`);
   const meta=await fetch(url).then(r=>r.json());
-  if(!meta.href)throw new Error('USGS returned no image URL. Try a smaller area.');
+  if(!meta.href)throw new Error('USGS returned no image URL');
   log('downloading geotiff...');
   const buf=await fetch(meta.href).then(r=>r.arrayBuffer());
   log(`${(buf.byteLength/1024).toFixed(0)}kb received`,'ok');
   return {buf,width:pxW,height:pxH};
 }
 
-// ── PARSE TIFF (handles both stripped and tiled layouts) ──────────
-function parseTiff(buf, fallbackW, fallbackH){
+// ── PARSE TIFF ────────────────────────────────────────────────────
+function parseTiff(buf,fallbackW,fallbackH){
   const view=new DataView(buf);
   const le=(view.getUint16(0,false)===0x4949);
-  if(view.getUint16(0,false)!==0x4949 && view.getUint16(0,false)!==0x4D4D){
-    throw new Error('Not a valid TIFF file');
-  }
-  let off=view.getUint32(4,le);
-  const cnt=view.getUint16(off,le);
-  off+=2;
+  if(view.getUint16(0,false)!==0x4949&&view.getUint16(0,false)!==0x4D4D)
+    throw new Error('Response is not a TIFF file');
 
-  let imgW=fallbackW, imgH=fallbackH;
-  let stripOffsets=[], stripByteCounts=[];
-  let tileOffsets=[], tileByteCounts=[], tileW=0, tileH=0;
-  let bitsPerSample=32, samplesPerPixel=1, sampleFormat=3;
-  let compression=1;
+  let off=view.getUint32(4,le);
+  const cnt=view.getUint16(off,le);off+=2;
+  let imgW=fallbackW,imgH=fallbackH;
+  let stripOffsets=[],stripCounts=[];
+  let tileOffsets=[],tileCounts=[],tileW=0,tileH=0;
+  let bitsPerSample=32,compression=1;
 
   for(let i=0;i<cnt;i++){
-    const tag=view.getUint16(off,le);
-    const type=view.getUint16(off+2,le);
-    const n=view.getUint32(off+4,le);
-    const vo=off+8;
-
-    // helper: read value or offset-dereferenced values
-    const readShort=()=>view.getUint16(vo,le);
-    const readLong=()=>view.getUint32(vo,le);
-    const readVal=()=>type===3?readShort():readLong();
-    const readArray=(readFn)=>{
-      if(n===1) return [readVal()];
-      const arrOff=view.getUint32(vo,le);
-      const arr=[];
-      for(let j=0;j<n;j++) arr.push(type===3?view.getUint16(arrOff+j*2,le):view.getUint32(arrOff+j*4,le));
+    const tag=view.getUint16(off,le),type=view.getUint16(off+2,le),n=view.getUint32(off+4,le),vo=off+8;
+    const rv=()=>type===3?view.getUint16(vo,le):view.getUint32(vo,le);
+    const ra=()=>{
+      if(n===1)return[rv()];
+      const ao=view.getUint32(vo,le),arr=[];
+      for(let j=0;j<n;j++)arr.push(type===3?view.getUint16(ao+j*2,le):view.getUint32(ao+j*4,le));
       return arr;
     };
-
-    if(tag===256) imgW=readVal();
-    else if(tag===257) imgH=readVal();
-    else if(tag===258) bitsPerSample=readVal();
-    else if(tag===259) compression=readVal();
-    else if(tag===277) samplesPerPixel=readVal();
-    else if(tag===278){} // rows per strip — ignore
-    else if(tag===273) stripOffsets=readArray();
-    else if(tag===279) stripByteCounts=readArray();
-    else if(tag===322) tileW=readVal();
-    else if(tag===323) tileH=readVal();
-    else if(tag===324) tileOffsets=readArray();
-    else if(tag===325) tileByteCounts=readArray();
-    else if(tag===339) sampleFormat=readVal();
-
+    if(tag===256)imgW=rv();
+    else if(tag===257)imgH=rv();
+    else if(tag===258)bitsPerSample=rv();
+    else if(tag===259)compression=rv();
+    else if(tag===273)stripOffsets=ra();
+    else if(tag===279)stripCounts=ra();
+    else if(tag===322)tileW=rv();
+    else if(tag===323)tileH=rv();
+    else if(tag===324)tileOffsets=ra();
+    else if(tag===325)tileCounts=ra();
     off+=12;
   }
 
-  if(compression!==1){
-    throw new Error(`TIFF compression ${compression} not supported. Try a smaller area or different resolution.`);
-  }
+  if(compression!==1)throw new Error(`Compressed TIFF (type ${compression}) not supported`);
 
+  const bps=bitsPerSample/8;
   const elevs=new Float32Array(imgW*imgH);
-  const bytesPerSample=bitsPerSample/8;
 
-  // TILED layout
-  if(tileOffsets.length>0 && tileW>0 && tileH>0){
-    log(`tiled tiff: ${imgW}×${imgH}, tile ${tileW}×${tileH}`);
-    const tilesAcross=Math.ceil(imgW/tileW);
-    const tilesDown=Math.ceil(imgH/tileH);
-    for(let ty=0;ty<tilesDown;ty++){
-      for(let tx=0;tx<tilesAcross;tx++){
-        const tIdx=ty*tilesAcross+tx;
-        if(tIdx>=tileOffsets.length) continue;
-        const tOff=tileOffsets[tIdx];
-        const tCount=tileByteCounts[tIdx]/bytesPerSample;
-        const tData=new Float32Array(buf,tOff,tCount);
-        const xStart=tx*tileW, yStart=ty*tileH;
-        for(let py=0;py<tileH;py++){
-          for(let px=0;px<tileW;px++){
-            const imgX=xStart+px, imgY=yStart+py;
-            if(imgX<imgW && imgY<imgH){
-              elevs[imgY*imgW+imgX]=tData[py*tileW+px];
-            }
-          }
-        }
+  if(tileOffsets.length>0&&tileW>0&&tileH>0){
+    log(`tiled tiff ${imgW}×${imgH}, tile ${tileW}×${tileH}`);
+    const across=Math.ceil(imgW/tileW),down=Math.ceil(imgH/tileH);
+    for(let ty=0;ty<down;ty++) for(let tx=0;tx<across;tx++){
+      const ti=ty*across+tx;
+      if(ti>=tileOffsets.length)continue;
+      // Use readF32 for alignment-safe read
+      const data=readF32(buf,tileOffsets[ti],tileCounts[ti]/bps);
+      const xStart=tx*tileW,yStart=ty*tileH;
+      for(let py=0;py<tileH;py++) for(let px=0;px<tileW;px++){
+        const ix=xStart+px,iy=yStart+py;
+        if(ix<imgW&&iy<imgH) elevs[iy*imgW+ix]=data[py*tileW+px];
       }
     }
-  }
-  // STRIPPED layout
-  else if(stripOffsets.length>0){
-    log(`stripped tiff: ${imgW}×${imgH}, ${stripOffsets.length} strip(s)`);
+  } else if(stripOffsets.length>0){
+    log(`stripped tiff ${imgW}×${imgH}, ${stripOffsets.length} strip(s)`);
     let pi=0;
     for(let s=0;s<stripOffsets.length;s++){
-      const sOff=stripOffsets[s];
-      const sCount=stripByteCounts[s]/bytesPerSample;
-      const sData=new Float32Array(buf,sOff,sCount);
-      for(let k=0;k<sData.length;k++) elevs[pi++]=sData[k];
+      const data=readF32(buf,stripOffsets[s],stripCounts[s]/bps);
+      for(let k=0;k<data.length;k++)elevs[pi++]=data[k];
     }
-  }
-  else {
-    throw new Error('Could not find pixel data in TIFF. The USGS response may have been malformed.');
+  } else {
+    throw new Error('Could not locate pixel data in TIFF');
   }
 
-  // Sanity check — if all values are the same, something went wrong
-  const minV=arrayMin(elevs), maxV=arrayMax(elevs);
-  if(Math.abs(maxV-minV)<0.01){
-    throw new Error(`Elevation range is flat (${minV.toFixed(1)}m). TIFF may not have parsed correctly.`);
-  }
-  log(`elevation range: ${minV.toFixed(0)}m – ${maxV.toFixed(0)}m`,'ok');
-
-  return {elevs, width:imgW, height:imgH};
+  const minV=arrayMin(elevs),maxV=arrayMax(elevs);
+  if(Math.abs(maxV-minV)<0.01)throw new Error('Elevation data appears flat — coverage may be missing for this area');
+  log(`elevation ${minV.toFixed(0)}m – ${maxV.toFixed(0)}m`,'ok');
+  return {elevs,width:imgW,height:imgH};
 }
 
-// ── GEOMETRY HELPERS ──────────────────────────────────────────────
-// Returns {verts: Float32Array, indices: Uint32Array} for a watertight terrain block
-function buildGeometry(elevs, w, h, exag, baseThick){
+// ── GEOMETRY (shared by STL + OBJ) ────────────────────────────────
+function buildGeometry(elevs,w,h,exag,baseThick){
   const scaleXY=100/Math.max(w,h);
-  const minH=arrayMin(elevs), range=(arrayMax(elevs)-minH)||1;
+  const minH=arrayMin(elevs),range=(arrayMax(elevs)-minH)||1;
   const scaleZ=(30/range)*exag;
-  const W=(w-1)*scaleXY, H=(h-1)*scaleXY;
+  const getZ=(x,y)=>{const v=elevs[y*w+x];return(v>-9000&&isFinite(v))?(v-minH)*scaleZ+baseThick:baseThick;};
 
-  const getZ=(x,y)=>{
-    const v=elevs[y*w+x];
-    return (v>-9000&&isFinite(v))?(v-minH)*scaleZ+baseThick:baseThick;
-  };
-
-  // Vertex layout:
-  // 0..w*h-1         : top surface (terrain)
-  // w*h..2*w*h-1     : bottom surface (flat at z=0, same XY as top)
-  const nVerts=w*h*2;
-  const verts=new Float32Array(nVerts*3);
-
+  // Top surface verts: indices 0..w*h-1
+  // Bottom surface verts (z=0): indices w*h..2*w*h-1
+  const nV=w*h*2;
+  const verts=new Float32Array(nV*3);
   for(let y=0;y<h;y++) for(let x=0;x<w;x++){
     const i=y*w+x;
-    // top
-    verts[i*3+0]=x*scaleXY;
+    verts[i*3]  =x*scaleXY;
     verts[i*3+1]=(h-1-y)*scaleXY;
     verts[i*3+2]=getZ(x,y);
-    // bottom (same XY, z=0)
     const j=w*h+i;
-    verts[j*3+0]=x*scaleXY;
+    verts[j*3]  =x*scaleXY;
     verts[j*3+1]=(h-1-y)*scaleXY;
     verts[j*3+2]=0;
   }
 
   const tris=[];
-  const push=(a,b,c)=>tris.push(a,b,c);
-
-  // TOP surface
-  for(let y=0;y<h-1;y++) for(let x=0;x<w-1;x++){
-    const a=y*w+x, b=a+1, c=(y+1)*w+x, d=c+1;
-    push(a,c,b); push(b,c,d);
-  }
-
-  // BOTTOM surface (reversed winding for outward normals)
   const B=w*h;
+
+  // Top surface
   for(let y=0;y<h-1;y++) for(let x=0;x<w-1;x++){
-    const a=B+y*w+x, b=a+1, c=B+(y+1)*w+x, d=c+1;
-    push(a,b,c); push(b,d,c);
+    const a=y*w+x,b=a+1,c=(y+1)*w+x,d=c+1;
+    tris.push(a,c,b,b,c,d);
+  }
+  // Bottom surface (reversed winding)
+  for(let y=0;y<h-1;y++) for(let x=0;x<w-1;x++){
+    const a=B+y*w+x,b=a+1,c=B+(y+1)*w+x,d=c+1;
+    tris.push(a,b,c,b,d,c);
+  }
+  // Front wall (y=0 in grid space)
+  for(let x=0;x<w-1;x++){
+    const t0=x,t1=x+1,b0=B+x,b1=B+x+1;
+    tris.push(t0,b0,t1,t1,b0,b1);
+  }
+  // Back wall (y=h-1)
+  for(let x=0;x<w-1;x++){
+    const t0=(h-1)*w+x,t1=t0+1,b0=B+(h-1)*w+x,b1=b0+1;
+    tris.push(t0,t1,b0,t1,b1,b0);
+  }
+  // Left wall (x=0)
+  for(let y=0;y<h-1;y++){
+    const t0=y*w,t1=(y+1)*w,b0=B+y*w,b1=B+(y+1)*w;
+    tris.push(t0,t1,b0,t1,b1,b0);
+  }
+  // Right wall (x=w-1)
+  for(let y=0;y<h-1;y++){
+    const t0=y*w+(w-1),t1=(y+1)*w+(w-1),b0=B+y*w+(w-1),b1=B+(y+1)*w+(w-1);
+    tris.push(t0,b0,t1,t1,b0,b1);
   }
 
-  // WALLS — 4 sides
-  // Front (y=0, top row in image = y=h-1 after flip, but geometrically y=0 edge)
-  for(let x=0;x<w-1;x++){
-    const t0=x, t1=x+1;            // top edge
-    const b0=B+x, b1=B+x+1;       // bottom edge
-    push(t0,b0,t1); push(t1,b0,b1);
-  }
-  // Back (y=h-1)
-  for(let x=0;x<w-1;x++){
-    const t0=(h-1)*w+x, t1=t0+1;
-    const b0=B+(h-1)*w+x, b1=b0+1;
-    push(t0,t1,b0); push(t1,b1,b0);
-  }
-  // Left (x=0)
-  for(let y=0;y<h-1;y++){
-    const t0=y*w, t1=(y+1)*w;
-    const b0=B+y*w, b1=B+(y+1)*w;
-    push(t0,t1,b0); push(t1,b1,b0);
-  }
-  // Right (x=w-1)
-  for(let y=0;y<h-1;y++){
-    const t0=y*w+(w-1), t1=(y+1)*w+(w-1);
-    const b0=B+y*w+(w-1), b1=B+(y+1)*w+(w-1);
-    push(t0,b0,t1); push(t1,b0,b1);
-  }
-
-  return {verts, indices:new Uint32Array(tris)};
+  return {verts,indices:new Uint32Array(tris)};
 }
 
-// ── BUILD STL ─────────────────────────────────────────────────────
-function buildSTL(elevs,w,h,exag,baseThick){
-  const {verts,indices}=buildGeometry(elevs,w,h,exag,baseThick);
-  const triCount=indices.length/3;
-  const ab=new ArrayBuffer(84+triCount*50);
-  const dv=new DataView(ab);
-  // header (80 bytes) left as zeros
-  dv.setUint32(80,triCount,true);
-  let off=84;
-  for(let i=0;i<triCount;i++){
-    const ai=indices[i*3]*3, bi=indices[i*3+1]*3, ci=indices[i*3+2]*3;
+// ── STL ───────────────────────────────────────────────────────────
+function buildSTL(elevs,w,h,exag,base){
+  const {verts,indices}=buildGeometry(elevs,w,h,exag,base);
+  const tc=indices.length/3;
+  const ab=new ArrayBuffer(84+tc*50),dv=new DataView(ab);
+  dv.setUint32(80,tc,true);
+  let o=84;
+  for(let i=0;i<tc;i++){
+    const ai=indices[i*3]*3,bi=indices[i*3+1]*3,ci=indices[i*3+2]*3;
     const ax=verts[ai],ay=verts[ai+1],az=verts[ai+2];
     const bx=verts[bi],by=verts[bi+1],bz=verts[bi+2];
     const cx=verts[ci],cy=verts[ci+1],cz=verts[ci+2];
-    // normal
-    const ux=bx-ax,uy=by-ay,uz=bz-az;
-    const vx=cx-ax,vy=cy-ay,vz=cz-az;
-    const nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx;
+    const ux=bx-ax,uy=by-ay,uz=bz-az,vx=cx-ax,vy=cy-ay,vz=cz-az;
+    const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
     const nl=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
-    dv.setFloat32(off,nx/nl,true);dv.setFloat32(off+4,ny/nl,true);dv.setFloat32(off+8,nz/nl,true);off+=12;
-    dv.setFloat32(off,ax,true);dv.setFloat32(off+4,ay,true);dv.setFloat32(off+8,az,true);off+=12;
-    dv.setFloat32(off,bx,true);dv.setFloat32(off+4,by,true);dv.setFloat32(off+8,bz,true);off+=12;
-    dv.setFloat32(off,cx,true);dv.setFloat32(off+4,cy,true);dv.setFloat32(off+8,cz,true);off+=12;
-    dv.setUint16(off,0,true);off+=2;
+    dv.setFloat32(o,nx/nl,true);dv.setFloat32(o+4,ny/nl,true);dv.setFloat32(o+8,nz/nl,true);o+=12;
+    dv.setFloat32(o,ax,true);dv.setFloat32(o+4,ay,true);dv.setFloat32(o+8,az,true);o+=12;
+    dv.setFloat32(o,bx,true);dv.setFloat32(o+4,by,true);dv.setFloat32(o+8,bz,true);o+=12;
+    dv.setFloat32(o,cx,true);dv.setFloat32(o+4,cy,true);dv.setFloat32(o+8,cz,true);o+=12;
+    dv.setUint16(o,0,true);o+=2;
   }
   return ab;
 }
 
-// ── BUILD OBJ (watertight with base + walls) ──────────────────────
-function buildOBJ(elevs,w,h,exag,baseThick){
-  const {verts,indices}=buildGeometry(elevs,w,h,exag,baseThick);
-  const lines=['# TerrainForge OBJ','# Source: USGS 3DEP','# Watertight mesh with base and walls',''];
-  const nVerts=verts.length/3;
-  for(let i=0;i<nVerts;i++){
+// ── OBJ ───────────────────────────────────────────────────────────
+function buildOBJ(elevs,w,h,exag,base){
+  const {verts,indices}=buildGeometry(elevs,w,h,exag,base);
+  const lines=['# TerrainForge OBJ','# Source: USGS 3DEP','# Watertight — top surface + base + walls',''];
+  for(let i=0;i<verts.length/3;i++)
     lines.push(`v ${verts[i*3].toFixed(4)} ${verts[i*3+1].toFixed(4)} ${verts[i*3+2].toFixed(4)}`);
-  }
   lines.push('');
-  const triCount=indices.length/3;
-  for(let i=0;i<triCount;i++){
-    // OBJ is 1-indexed
+  for(let i=0;i<indices.length/3;i++)
     lines.push(`f ${indices[i*3]+1} ${indices[i*3+1]+1} ${indices[i*3+2]+1}`);
-  }
   return lines.join('\n');
 }
 
 // ── PREVIEW ───────────────────────────────────────────────────────
-function showPreview(elevs,w,h,exag,baseThick){
+function showPreview(elevs,w,h,exag,base){
   if(terrainMesh){scene.remove(terrainMesh);terrainMesh.geometry.dispose();terrainMesh.material.dispose();terrainMesh=null;}
-  const maxPts=200,stepX=Math.max(1,Math.floor(w/maxPts)),stepY=Math.max(1,Math.floor(h/maxPts));
-  const cols=Math.floor(w/stepX),rows=Math.floor(h/stepY);
+  const maxPts=200,sx=Math.max(1,Math.floor(w/maxPts)),sy=Math.max(1,Math.floor(h/maxPts));
+  const cols=Math.floor(w/sx),rows=Math.floor(h/sy);
   const minH=arrayMin(elevs),range=(arrayMax(elevs)-minH)||1;
   const scaleXY=100/Math.max(cols,rows),scaleZ=(30/range)*exag;
-  const positions=new Float32Array(cols*rows*3),colors=new Float32Array(cols*rows*3);
+  const pos=new Float32Array(cols*rows*3),col=new Float32Array(cols*rows*3);
   let idx=0;
-  for(let row=0;row<rows;row++) for(let col=0;col<cols;col++){
-    const v=elevs[(row*stepY)*w+(col*stepX)];
-    const z=(v>-9000&&isFinite(v))?(v-minH)*scaleZ+baseThick:baseThick;
-    positions[idx*3]=(col-cols/2)*scaleXY;
-    positions[idx*3+1]=z-15;
-    positions[idx*3+2]=(row-rows/2)*scaleXY;
-    const t=z/((30*exag)+baseThick);
-    colors[idx*3]=0.1+t*0.6;colors[idx*3+1]=0.3+t*0.5;colors[idx*3+2]=0.05;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    const v=elevs[(r*sy)*w+(c*sx)];
+    const z=(v>-9000&&isFinite(v))?(v-minH)*scaleZ+base:base;
+    pos[idx*3]=(c-cols/2)*scaleXY;pos[idx*3+1]=z-15;pos[idx*3+2]=(r-rows/2)*scaleXY;
+    const t=z/((30*exag)+base);
+    col[idx*3]=0.1+t*0.6;col[idx*3+1]=0.3+t*0.5;col[idx*3+2]=0.05;
     idx++;
   }
   const inds=[];
-  for(let row=0;row<rows-1;row++) for(let col=0;col<cols-1;col++){
-    const a=row*cols+col,b=a+1,c=(row+1)*cols+col,d=c+1;
-    inds.push(a,c,b,b,c,d);
+  for(let r=0;r<rows-1;r++) for(let c=0;c<cols-1;c++){
+    const a=r*cols+c,b=a+1,cc=(r+1)*cols+c,d=cc+1;
+    inds.push(a,cc,b,b,cc,d);
   }
   const geo=new THREE.BufferGeometry();
-  geo.setIndex(inds);
-  geo.setAttribute('position',new THREE.BufferAttribute(positions,3));
-  geo.setAttribute('color',new THREE.BufferAttribute(colors,3));
+  geo.setIndex(inds);geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('color',new THREE.BufferAttribute(col,3));
   geo.computeVertexNormals();
   terrainMesh=new THREE.Mesh(geo,new THREE.MeshPhongMaterial({vertexColors:true,side:THREE.DoubleSide}));
-  scene.add(terrainMesh);
-  camDist=180;rotX=0.5;rotY=0.4;
+  scene.add(terrainMesh);camDist=180;rotX=0.5;rotY=0.4;
   document.getElementById('empty-preview').style.display='none';
   document.getElementById('preview-hint').style.display='block';
 }
@@ -573,52 +497,42 @@ async function generate(){
   const btn=document.getElementById('gen-btn');
   btn.disabled=true;btn.textContent='generating...';
   setProgress(5);
-
   let res=selectedRes;
   try{
     const sw=currentRect.getSouthWest(),ne=currentRect.getNorthEast();
     log(`${sw.lat.toFixed(4)}°N ${sw.lng.toFixed(4)}°W → ${ne.lat.toFixed(4)}°N ${ne.lng.toFixed(4)}°W`);
 
-    let buf,width,height,parseResult;
-
-    // Try selected resolution, auto-fallback from 1m → 10m if needed
+    let fetchResult,parseResult;
     try{
-      ({buf,width,height}=await fetchElevation(currentRect,res));
-      setProgress(40);
+      fetchResult=await fetchElevation(currentRect,res);
+      setProgress(38);
       log('parsing tiff...');
-      parseResult=parseTiff(buf,width,height);
+      parseResult=parseTiff(fetchResult.buf,fetchResult.width,fetchResult.height);
     } catch(e){
       if(res===1){
-        log(`1m unavailable (${e.message}) — falling back to 10m`,'warn');
+        log(`1m failed (${e.message}) — falling back to 10m`,'warn');
         res=10;
-        ({buf,width,height}=await fetchElevation(currentRect,res));
-        setProgress(40);
+        fetchResult=await fetchElevation(currentRect,res);
+        setProgress(38);
         log('parsing tiff...');
-        parseResult=parseTiff(buf,width,height);
-      } else {
-        throw e;
-      }
+        parseResult=parseTiff(fetchResult.buf,fetchResult.width,fetchResult.height);
+      } else throw e;
     }
 
     const {elevs,width:w,height:h}=parseResult;
-    log(`${w}×${h} grid parsed`,'ok');
-    setProgress(58);
-
+    log(`${w}×${h} grid ready`,'ok');
+    setProgress(55);
     const exag=parseFloat(document.getElementById('exag').value);
     const base=parseInt(document.getElementById('base').value);
-
     log('building preview...');
     showPreview(elevs,w,h,exag,base);
     setProgress(68);
-
     log('building stl...');
     stlBuffer=buildSTL(elevs,w,h,exag,base);
-    setProgress(82);
-
+    setProgress(84);
     log('building obj...');
     objString=buildOBJ(elevs,w,h,exag,base);
     setProgress(100);
-
     const tris=(stlBuffer.byteLength-84)/50;
     log(`${tris.toLocaleString()} triangles · ${(stlBuffer.byteLength/1024/1024).toFixed(2)}mb`,'ok');
     log('done.','ok');
@@ -639,8 +553,7 @@ function downloadSTL(){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([stlBuffer],{type:'application/octet-stream'}));
   a.download=`terrain_${sw.lat.toFixed(3)}_${sw.lng.toFixed(3)}.stl`;
-  a.click();URL.revokeObjectURL(a.href);
-  log('stl downloaded','ok');
+  a.click();URL.revokeObjectURL(a.href);log('stl downloaded','ok');
 }
 function downloadOBJ(){
   if(!objString||!currentRect)return;
@@ -648,8 +561,7 @@ function downloadOBJ(){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([objString],{type:'text/plain'}));
   a.download=`terrain_${sw.lat.toFixed(3)}_${sw.lng.toFixed(3)}.obj`;
-  a.click();URL.revokeObjectURL(a.href);
-  log('obj downloaded','ok');
+  a.click();URL.revokeObjectURL(a.href);log('obj downloaded','ok');
 }
 </script>
 </body>
