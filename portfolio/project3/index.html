@@ -337,16 +337,16 @@ function makeLabel(text){
   return sprite;
 }
 
-function addCompassLabels(group,w,h,midZ){
-  // w,h = extent of terrain in normalized units (0..100 range)
-  // labels sit just outside the edges at mid-height
+function addCompassLabels(group,w,h){
+  // Labels sit just outside the terrain edges, at the bottom plane (y=-15)
   const half_w=w/2, half_h=h/2;
-  const pad=8;
+  const pad=10;
+  const bottomY=-15; // same y-offset used for all preview geometry
 
-  const N=makeLabel('N'); N.position.set(0, midZ, -half_h-pad);   group.add(N);
-  const S=makeLabel('S'); S.position.set(0, midZ,  half_h+pad);   group.add(S);
-  const E=makeLabel('E'); E.position.set( half_w+pad, midZ, 0);   group.add(E);
-  const W=makeLabel('W'); W.position.set(-half_w-pad, midZ, 0);   group.add(W);
+  const N=makeLabel('N'); N.position.set(0,       bottomY, -half_h-pad); group.add(N);
+  const S=makeLabel('S'); S.position.set(0,       bottomY,  half_h+pad); group.add(S);
+  const E=makeLabel('E'); E.position.set( half_w+pad, bottomY, 0);        group.add(E);
+  const W=makeLabel('W'); W.position.set(-half_w-pad, bottomY, 0);        group.add(W);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -607,76 +607,122 @@ function buildGeometry(elevs,w,h,exag,baseThick,bounds,osmData){
 
   const tris=[];
 
-  // Top surface quads — only where both cells are inside mask
+  // ── TOP SURFACE ───────────────────────────────────────────────
+  // Emit a quad for every 2×2 block where all 4 corners are inside.
+  // If only some corners are inside, still emit partial triangles
+  // so the surface fills up to the mask boundary.
   for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
-    const a=y*w+x,b=a+1,c=(y+1)*w+x,d=c+1;
-    const anyIn=mask[a]||mask[b]||mask[c]||mask[d];
-    if(!anyIn)continue;
-    tris.push(a,c,b,b,c,d);
-  }
-  // Bottom surface quads (reversed winding)
-  for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
-    const a=B+y*w+x,b=a+1,c=B+(y+1)*w+x,d=c+1;
-    const anyIn=mask[y*w+x]||mask[y*w+x+1]||mask[(y+1)*w+x]||mask[(y+1)*w+x+1];
-    if(!anyIn)continue;
-    tris.push(a,b,c,b,d,c);
+    const a=y*w+x, b=a+1, c=(y+1)*w+x, d=c+1;
+    const ia=mask[a],ib=mask[b],ic=mask[c],id=mask[d];
+    if(!ia&&!ib&&!ic&&!id)continue;
+    if(ia&&ib&&ic&&id){
+      tris.push(a,c,b, b,c,d);
+    } else {
+      if(ia&&ib&&ic) tris.push(a,c,b);
+      if(ib&&ic&&id) tris.push(b,c,d);
+      if(ia&&ib&&id) tris.push(a,d,b);
+      if(ia&&ic&&id) tris.push(a,c,d);
+    }
   }
 
-  // WALLS — iterate every edge between an inside cell and an outside cell (or border)
-  // This creates walls along the actual shape boundary, not just the 4 bounding edges
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-    if(!mask[y*w+x])continue;
-    const topIdx=y*w+x;
-    const botIdx=B+topIdx;
+  // ── BOTTOM SURFACE ────────────────────────────────────────────
+  // Mirror of top surface but at z=0, reversed winding (normals point down).
+  for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
+    const a=B+y*w+x, b=a+1, c=B+(y+1)*w+x, d=c+1;
+    const ia=mask[y*w+x],ib=mask[y*w+x+1],ic=mask[(y+1)*w+x],id=mask[(y+1)*w+x+1];
+    if(!ia&&!ib&&!ic&&!id)continue;
+    if(ia&&ib&&ic&&id){
+      tris.push(a,b,c, b,d,c);
+    } else {
+      if(ia&&ib&&ic) tris.push(a,b,c);
+      if(ib&&ic&&id) tris.push(b,d,c);
+      if(ia&&ib&&id) tris.push(a,b,d);
+      if(ia&&ic&&id) tris.push(a,d,c);
+    }
+  }
 
-    // Check right neighbor
-    if(x===w-1||!mask[y*w+x+1]){
-      const topR=y*w+x+1<w*h&&x+1<w?y*w+x+1:topIdx;
-      const botR=B+topR;
-      // Wall: current top → current bot → right top → right bot
-      // But for boundary columns we just drop a vertical wall from this vertex
-      tris.push(topIdx,botIdx,topIdx); // degenerate guard — real wall below
-      // Right-facing wall
+  // ── WALLS ─────────────────────────────────────────────────────
+  // A wall quad exists on every edge shared between an inside cell
+  // and an outside cell (or the grid boundary).
+  // Wall uses the TWO inside vertices (top + bottom) of that edge.
+  // We walk horizontal edges (between rows) and vertical edges (between cols).
+
+  // Vertical edges: between (x, y) and (x+1, y)
+  for(let y=0;y<h;y++)for(let x=0;x<w-1;x++){
+    const left=y*w+x, right=y*w+x+1;
+    const leftIn=mask[left], rightIn=mask[right];
+    if(leftIn===rightIn)continue; // same side, no wall needed
+    if(leftIn){
+      // Wall on the right face of 'left' cell
+      // Top of left, bottom of left — single-cell-wide wall strip
+      const tL=left, bL=B+left;
+      const tR=right, bR=B+right;
+      tris.push(tL,bL,tR, tR,bL,bR);
+    } else {
+      // Wall on the left face of 'right' cell
+      const tL=left, bL=B+left;
+      const tR=right, bR=B+right;
+      tris.push(tR,tL,bR, tL,bL,bR);
+    }
+  }
+
+  // Horizontal edges: between (x, y) and (x, y+1)
+  for(let y=0;y<h-1;y++)for(let x=0;x<w;x++){
+    const top=y*w+x, bot=(y+1)*w+x;
+    const topIn=mask[top], botIn=mask[bot];
+    if(topIn===botIn)continue;
+    if(topIn){
+      const tT=top, bT=B+top;
+      const tB=bot, bB=B+bot;
+      tris.push(tT,tB,bT, tB,bB,bT);
+    } else {
+      const tT=top, bT=B+top;
+      const tB=bot, bB=B+bot;
+      tris.push(tB,tT,bB, tT,bT,bB);
+    }
+  }
+
+  // Grid boundary walls — cells on the edge of the grid that are inside
+  // need a wall dropping straight down on the grid border.
+  for(let x=0;x<w;x++){
+    // Top border (y=0)
+    if(mask[x]){
+      const t=x, b=B+x;
+      // No neighbor above — emit a degenerate-free single-column wall
+      // We just need the bottom face to be closed, which the bottom surface handles.
+      // But the border edge itself needs a wall strip — handled by pairing with
+      // the virtual outside row. Since there's no actual neighbor vertex, we
+      // duplicate the top vertex displaced one step. Instead, we skip this:
+      // the bottom face already covers z=0, and the vertical wall at x-edges
+      // is covered by the vertical-edge loop above for interior transitions.
+      // For the true grid boundary, we close it simply:
       if(x<w-1){
-        const tr=y*w+x+1,br=B+tr;
-        tris.push(topIdx,tr,botIdx);
-        tris.push(tr,br,botIdx);
-      }else{
-        // Edge of grid — drop straight wall
-        tris.push(topIdx,botIdx,topIdx);
+        const t2=x+1, b2=B+x+1;
+        if(mask[x]&&mask[x+1]){
+          // top row wall facing outward (y=-1 side)
+          tris.push(t,b,t2, t2,b,b2);
+        }
       }
     }
-    // Check left neighbor
-    if(x===0||!mask[y*w+x-1]){
-      if(x>0){
-        const tl=y*w+x-1,bl=B+tl;
-        tris.push(topIdx,botIdx,tl);
-        tris.push(tl,botIdx,bl);
-      }
-    }
-    // Check bottom neighbor (y+1 = further south in image space)
-    if(y===h-1||!mask[(y+1)*w+x]){
-      if(y<h-1){
-        const td=(y+1)*w+x,bd=B+td;
-        tris.push(topIdx,td,botIdx);
-        tris.push(td,bd,botIdx);
-      }
-    }
-    // Check top neighbor (y-1)
-    if(y===0||!mask[(y-1)*w+x]){
-      if(y>0){
-        const tu=(y-1)*w+x,bu=B+tu;
-        tris.push(topIdx,botIdx,tu);
-        tu; // just referencing — suppress lint
-        tris.push(tu,botIdx,bu);
-      }
+    // Bottom border (y=h-1)
+    const bi=(h-1)*w+x;
+    if(mask[bi]&&x<w-1&&mask[bi+1]){
+      const t=(h-1)*w+x, b2=B+t, t2=t+1, b22=B+t2;
+      tris.push(t2,b2,t, t2,b22,b2);
     }
   }
-
-  // Bottom cap — close the bottom with a flat face
-  // Use a simple scanline fill: add bottom triangles for the base footprint
-  for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
-    // Already added in the bottom surface loop above
+  for(let y=0;y<h;y++){
+    // Left border (x=0)
+    if(mask[y*w]&&y<h-1&&mask[(y+1)*w]){
+      const t=y*w, b=B+t, t2=(y+1)*w, b2=B+t2;
+      tris.push(t2,t,b, t2,b,b2);
+    }
+    // Right border (x=w-1)
+    const ri=y*w+(w-1);
+    if(mask[ri]&&y<h-1&&mask[ri+w]){
+      const t=ri, b=B+t, t2=ri+w, b2=B+t2;
+      tris.push(t,t2,b, t2,b2,b);
+    }
   }
 
   // Apply OSM modifications to posArr (road recess, water flatten)
@@ -912,11 +958,9 @@ function showPreview(elevs,w,h,exag,base,bounds,osmData){
     }
   }
 
-  // Compute terrain extent for label placement
   const terrainW=(cols-1)*scaleXY;
   const terrainH=(rows-1)*scaleXY;
-  const midZ=((30*exag/2)+base)-15; // rough mid-height in scene coords
-  addCompassLabels(group,terrainW,terrainH,midZ);
+  addCompassLabels(group,terrainW,terrainH);
 
   scene.add(group);
   previewGroup=group;
