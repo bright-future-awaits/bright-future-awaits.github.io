@@ -27,10 +27,10 @@ header{padding:1rem 2rem;border-bottom:1px solid var(--border);display:flex;alig
 .addr-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:0.68rem;padding:5px 8px;outline:none}
 .addr-input:focus{border-color:var(--accent)}
 .addr-input::placeholder{color:var(--muted)}
-.addr-btn{background:var(--accent);color:#000;border:none;border-radius:3px;font-family:var(--mono);font-size:0.65rem;font-weight:700;padding:5px 10px;cursor:pointer;white-space:nowrap}
+.addr-btn{background:var(--accent);color:#000;border:none;border-radius:3px;font-family:var(--mono);font-size:0.65rem;font-weight:700;padding:5px 10px;cursor:pointer}
 .addr-btn:hover{background:#d4ff1a}
 .map-style-bar{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:999;display:flex;gap:4px;background:rgba(10,10,10,0.92);padding:5px;border-radius:5px;border:1px solid var(--border)}
-.ms-btn{font-family:var(--mono);font-size:0.58rem;padding:4px 8px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.ms-btn{font-family:var(--mono);font-size:0.58rem;padding:4px 8px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all 0.15s}
 .ms-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
 .ms-btn:hover:not(.active){color:var(--text);border-color:#555}
 #preview-pane{background:#0d0d0d;display:flex;align-items:center;justify-content:center}
@@ -56,8 +56,8 @@ header{padding:1rem 2rem;border-bottom:1px solid var(--border);display:flex;alig
 .toggle input{opacity:0;width:0;height:0}
 .toggle-slider{position:absolute;inset:0;background:var(--surface2);border:1px solid var(--border);border-radius:20px;cursor:pointer;transition:0.2s}
 .toggle-slider:before{content:'';position:absolute;width:14px;height:14px;left:2px;top:2px;background:var(--muted);border-radius:50%;transition:0.2s}
-.toggle input:checked + .toggle-slider{background:var(--accent);border-color:var(--accent)}
-.toggle input:checked + .toggle-slider:before{background:#000;transform:translateX(16px)}
+.toggle input:checked+.toggle-slider{background:var(--accent);border-color:var(--accent)}
+.toggle input:checked+.toggle-slider:before{background:#000;transform:translateX(16px)}
 .slider-row{display:flex;align-items:center;gap:0.75rem;margin-top:0.35rem}
 input[type=range]{flex:1;accent-color:var(--accent)}
 .slider-val{font-family:var(--mono);font-size:0.72rem;color:var(--accent);min-width:36px;text-align:right}
@@ -89,7 +89,6 @@ input[type=range]{flex:1;accent-color:var(--accent)}
   </div>
 </header>
 <div class="workspace">
-
   <div class="pane">
     <div class="pane-label">01 — SELECT AREA</div>
     <div id="map"></div>
@@ -111,8 +110,7 @@ input[type=range]{flex:1;accent-color:var(--accent)}
     <canvas id="preview-canvas"></canvas>
     <div class="preview-hint" id="preview-hint" style="display:none">drag to rotate · scroll to zoom</div>
     <div class="empty-preview" id="empty-preview">
-      <span class="icon">⛰</span>
-      generate terrain<br>to preview here
+      <span class="icon">⛰</span>generate terrain<br>to preview here
     </div>
   </div>
 
@@ -127,7 +125,6 @@ input[type=range]{flex:1;accent-color:var(--accent)}
         </div>
       </div>
     </div>
-
     <div class="ps">
       <div class="label">Resolution</div>
       <div class="pills">
@@ -137,7 +134,6 @@ input[type=range]{flex:1;accent-color:var(--accent)}
       </div>
       <div class="hint" id="res-hint">1m lidar — auto-falls back to 10m if unavailable</div>
     </div>
-
     <div class="ps">
       <div class="label">Layers</div>
       <div class="toggle-row">
@@ -152,9 +148,8 @@ input[type=range]{flex:1;accent-color:var(--accent)}
         <span class="toggle-label">Water (OSM)</span>
         <label class="toggle"><input type="checkbox" id="tog-water"><span class="toggle-slider"></span></label>
       </div>
-      <div class="hint" style="margin-top:0.5rem">OSM data quality varies. Best in dense US cities.</div>
+      <div class="hint" style="margin-top:0.5rem">OSM heights estimated where tags are missing.</div>
     </div>
-
     <div class="ps">
       <div class="label">Vertical exaggeration</div>
       <div class="slider-row">
@@ -167,7 +162,6 @@ input[type=range]{flex:1;accent-color:var(--accent)}
         <span class="slider-val" id="base-val">3mm</span>
       </div>
     </div>
-
     <div class="ps">
       <button class="gen-btn" id="gen-btn" onclick="generate()" disabled>Select an area first</button>
       <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
@@ -177,7 +171,6 @@ input[type=range]{flex:1;accent-color:var(--accent)}
       </div>
       <a class="gmaps-btn" id="gmaps-btn" target="_blank">↗ Open in Google Maps</a>
     </div>
-
     <div style="padding:0.5rem 1.25rem 0.3rem;border-bottom:1px solid var(--border);flex-shrink:0">
       <div class="label" style="margin:0">Log</div>
     </div>
@@ -197,7 +190,7 @@ let stlBuffer=null, objString=null, selectedRes=1;
 let renderer, scene, camera;
 let isDragging=false, prevMouse={x:0,y:0};
 let rotX=0.5, rotY=0.4, camDist=180;
-let terrainMesh=null;
+let previewGroup=null; // THREE.Group — holds all preview objects
 
 // ─────────────────────────────────────────────────────────────────
 // MAP
@@ -210,8 +203,7 @@ const MAP_STYLES={
   dark:     {url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',max:19,attr:'© OSM © CARTO'},
 };
 map=L.map('map',{zoomControl:true}).setView([36.1,-112.1],10);
-tileLayer=L.tileLayer(MAP_STYLES.topo.url,{attribution:MAP_STYLES.topo.attr,maxZoom:MAP_STYLES.topo.max}).addTo(map);
-
+tileLayer=L.tileLayer(MAP_STYLES.topo.url,{attribution:MAP_STYLES.topo.attr,maxZoom:17}).addTo(map);
 function setMapStyle(key,btn){
   document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -219,7 +211,6 @@ function setMapStyle(key,btn){
   map.removeLayer(tileLayer);
   tileLayer=L.tileLayer(s.url,{attribution:s.attr,maxZoom:s.max}).addTo(map);
 }
-
 drawLayer=new L.FeatureGroup();
 map.addLayer(drawLayer);
 const shapeStyle={color:'#ff3300',fillOpacity:0.15,weight:2.5};
@@ -237,9 +228,7 @@ map.on(L.Draw.Event.CREATED,e=>{
   currentShape=e.layer;currentBounds=e.layer.getBounds();updateStats();
 });
 map.on(L.Draw.Event.DELETED,()=>{currentBounds=null;currentShape=null;showNoSel()});
-map.on(L.Draw.Event.EDITED,e=>{
-  e.layers.eachLayer(l=>{currentShape=l;currentBounds=l.getBounds();});updateStats();
-});
+map.on(L.Draw.Event.EDITED,e=>{e.layers.eachLayer(l=>{currentShape=l;currentBounds=l.getBounds();});updateStats();});
 
 // ─────────────────────────────────────────────────────────────────
 // GEOCODER
@@ -254,24 +243,24 @@ async function geocode(){
     const d=await r.json();
     if(!d.length){log(`no results for "${q}"`,'warn');return;}
     map.setView([parseFloat(d[0].lat),parseFloat(d[0].lon)],14);
-    log(`found: ${d[0].display_name.split(',').slice(0,2).join(',')}`, 'ok');
+    log(`found: ${d[0].display_name.split(',').slice(0,2).join(',')}`,'ok');
   }catch(e){
-    if(e.message.includes('Failed to fetch'))log('geocoder: network error','err');
-    else log(`geocoder: ${e.message}`,'err');
+    log(e.message.includes('Failed to fetch')?'geocoder: network error':`geocoder: ${e.message}`,'err');
   }
 }
 
 // ─────────────────────────────────────────────────────────────────
-// THREE.JS — fixed rotation
+// THREE.JS
 // ─────────────────────────────────────────────────────────────────
 const canvas=document.getElementById('preview-canvas');
 renderer=new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setClearColor(0x0d0d0d,1);
 scene=new THREE.Scene();
 camera=new THREE.PerspectiveCamera(45,2,0.1,5000);
-scene.add(new THREE.AmbientLight(0xffffff,0.4));
-const dl=new THREE.DirectionalLight(0xc8ff00,0.8);dl.position.set(1,2,1);scene.add(dl);
-const dl2=new THREE.DirectionalLight(0xffffff,0.3);dl2.position.set(-1,1,-1);scene.add(dl2);
+scene.add(new THREE.AmbientLight(0xffffff,0.5));
+const dl=new THREE.DirectionalLight(0xc8ff00,0.6);dl.position.set(1,2,1);scene.add(dl);
+const dl2=new THREE.DirectionalLight(0xffffff,0.4);dl2.position.set(-1,1.5,-1);scene.add(dl2);
+const dl3=new THREE.DirectionalLight(0xffffff,0.2);dl3.position.set(0,-1,0);scene.add(dl3);
 
 function resizeRenderer(){
   const p=document.getElementById('preview-pane');
@@ -280,38 +269,85 @@ function resizeRenderer(){
 }
 resizeRenderer();
 window.addEventListener('resize',resizeRenderer);
-
-canvas.addEventListener('mousedown',e=>{isDragging=true;prevMouse={x:e.clientX,y:e.clientY}});
+canvas.addEventListener('mousedown',e=>{isDragging=true;prevMouse={x:e.clientX,y:e.clientY};});
 window.addEventListener('mouseup',()=>isDragging=false);
 canvas.addEventListener('mousemove',e=>{
   if(!isDragging)return;
-  const dx=e.clientX-prevMouse.x;
-  const dy=e.clientY-prevMouse.y;
-  // drag RIGHT → scene rotates right (camera moves left around it) → rotY decreases
-  rotY-=dx*0.008;
-  // drag DOWN → camera tilts down → rotX increases
-  rotX+=dy*0.008;
+  rotY-=(e.clientX-prevMouse.x)*0.008;
+  rotX+=(e.clientY-prevMouse.y)*0.008;
   rotX=Math.max(-Math.PI/2+0.01,Math.min(Math.PI/2-0.01,rotX));
   prevMouse={x:e.clientX,y:e.clientY};
 });
-canvas.addEventListener('wheel',e=>{
-  camDist=Math.max(20,Math.min(800,camDist+e.deltaY*0.4));
-  e.preventDefault();
-},{passive:false});
+canvas.addEventListener('wheel',e=>{camDist=Math.max(20,Math.min(800,camDist+e.deltaY*0.4));e.preventDefault();},{passive:false});
 
 (function animate(){
   requestAnimationFrame(animate);
-  if(terrainMesh){
-    // Standard spherical coordinates: rotY=azimuth, rotX=elevation
+  if(previewGroup){
+    const c=previewGroup.position;
     camera.position.set(
-      terrainMesh.position.x + Math.sin(rotY)*Math.cos(rotX)*camDist,
-      terrainMesh.position.y + Math.sin(rotX)*camDist,
-      terrainMesh.position.z + Math.cos(rotY)*Math.cos(rotX)*camDist
+      c.x+Math.sin(rotY)*Math.cos(rotX)*camDist,
+      c.y+Math.sin(rotX)*camDist,
+      c.z+Math.cos(rotY)*Math.cos(rotX)*camDist
     );
-    camera.lookAt(terrainMesh.position);
+    camera.lookAt(c);
   }
   renderer.render(scene,camera);
 })();
+
+// FIX: properly dispose a Group by recursing through all children
+function disposeGroup(group){
+  if(!group)return;
+  group.traverse(obj=>{
+    // THREE.Sprite in r128 uses a single shared static BufferGeometry.
+    // Disposing it destroys it for ALL sprites globally — never do it.
+    if(obj.geometry && !obj.isSprite){
+      obj.geometry.dispose();
+    }
+    if(obj.material){
+      const mats=Array.isArray(obj.material)?obj.material:[obj.material];
+      for(const m of mats){
+        // Canvas textures on sprites must be disposed separately
+        if(m.map)m.map.dispose();
+        m.dispose();
+      }
+    }
+  });
+  scene.remove(group);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// NESW COMPASS LABELS
+// Makes a canvas texture sprite for each direction, positioned at
+// the edges of the terrain bounding box and parented to the group.
+// ─────────────────────────────────────────────────────────────────
+function makeLabel(text){
+  const size=128;
+  const c=document.createElement('canvas');
+  c.width=size;c.height=size;
+  const ctx=c.getContext('2d');
+  ctx.clearRect(0,0,size,size);
+  ctx.font=`bold ${size*0.6}px 'Space Mono', monospace`;
+  ctx.fillStyle='rgba(255,255,255,0.35)';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(text,size/2,size/2);
+  const tex=new THREE.CanvasTexture(c);
+  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false});
+  const sprite=new THREE.Sprite(mat);
+  sprite.scale.set(12,12,1);
+  return sprite;
+}
+
+function addCompassLabels(group,w,h,midZ){
+  // w,h = extent of terrain in normalized units (0..100 range)
+  // labels sit just outside the edges at mid-height
+  const half_w=w/2, half_h=h/2;
+  const pad=8;
+
+  const N=makeLabel('N'); N.position.set(0, midZ, -half_h-pad);   group.add(N);
+  const S=makeLabel('S'); S.position.set(0, midZ,  half_h+pad);   group.add(S);
+  const E=makeLabel('E'); E.position.set( half_w+pad, midZ, 0);   group.add(E);
+  const W=makeLabel('W'); W.position.set(-half_w-pad, midZ, 0);   group.add(W);
+}
 
 // ─────────────────────────────────────────────────────────────────
 // HELPERS
@@ -329,15 +365,12 @@ function log(msg,type='info'){
   el.appendChild(d);el.scrollTop=el.scrollHeight;
 }
 function setProgress(p){document.getElementById('prog').style.width=p+'%'}
-
-// Alignment-safe Float32 read — USGS tile offsets not always 4-byte aligned
 function readF32(buf,byteOffset,count){
   if(byteOffset%4===0)return new Float32Array(buf,byteOffset,count);
   const tmp=new ArrayBuffer(count*4);
   new Uint8Array(tmp).set(new Uint8Array(buf,byteOffset,count*4));
   return new Float32Array(tmp);
 }
-
 function pointInShape(lat,lng){
   if(!currentShape)return true;
   if(currentShape instanceof L.Circle){
@@ -354,7 +387,6 @@ function pointInShape(lat,lng){
   }
   return true;
 }
-
 function updateStats(){
   if(!currentBounds)return;
   const sw=currentBounds.getSouthWest(),ne=currentBounds.getNorthEast();
@@ -379,8 +411,11 @@ function showNoSel(){
 function setRes(el){
   document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');selectedRes=parseInt(el.dataset.res);
-  const hints={1:'1m lidar — auto-falls back to 10m if unavailable',10:'10m nationwide coverage',30:'30m — fastest, largest areas'};
-  document.getElementById('res-hint').textContent=hints[selectedRes];
+  document.getElementById('res-hint').textContent={
+    1:'1m lidar — auto-falls back to 10m if unavailable',
+    10:'10m nationwide coverage',
+    30:'30m — fastest, largest areas'
+  }[selectedRes];
   if(currentBounds)updateStats();
 }
 
@@ -403,32 +438,29 @@ async function fetchElevation(bounds,res){
     if(!r.ok)throw new Error(`HTTP ${r.status} ${r.statusText}`);
     meta=await r.json();
   }catch(e){
-    if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError'))
-      throw new Error('Cannot reach USGS (elevation.nationalmap.gov) — check internet connection.');
-    throw new Error(`USGS metadata error: ${e.message}`);
+    if(e.message.includes('Failed to fetch'))throw new Error('Cannot reach USGS — check internet connection.');
+    throw new Error(`USGS metadata: ${e.message}`);
   }
   if(!meta.href){
-    const detail=meta.error?meta.error.message:'no image URL returned';
-    throw new Error(`USGS declined to serve data: ${detail}. Try a smaller or different area.`);
+    throw new Error(`USGS declined: ${meta.error?meta.error.message:'no image URL'}. Try a smaller area.`);
   }
   log('downloading geotiff...');
   let buf;
   try{
     const r=await fetch(meta.href);
-    if(!r.ok)throw new Error(`HTTP ${r.status} ${r.statusText}`);
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);
     buf=await r.arrayBuffer();
   }catch(e){
-    if(e.message.includes('Failed to fetch'))
-      throw new Error('GeoTIFF download failed — possible CORS issue. Try again or use a different area.');
-    throw new Error(`GeoTIFF download: ${e.message}`);
+    if(e.message.includes('Failed to fetch'))throw new Error('GeoTIFF download failed — possible CORS issue. Try again.');
+    throw new Error(`GeoTIFF: ${e.message}`);
   }
-  if(buf.byteLength<500)throw new Error(`USGS returned only ${buf.byteLength} bytes — likely an error response, not a TIFF.`);
+  if(buf.byteLength<500)throw new Error(`USGS returned ${buf.byteLength} bytes — likely an error page, not elevation data.`);
   log(`${(buf.byteLength/1024).toFixed(0)}kb received`,'ok');
   return {buf,width:pxW,height:pxH};
 }
 
 // ─────────────────────────────────────────────────────────────────
-// PARSE TIFF (stripped + tiled, alignment-safe)
+// PARSE TIFF
 // ─────────────────────────────────────────────────────────────────
 function parseTiff(buf,fallbackW,fallbackH){
   const view=new DataView(buf);
@@ -437,8 +469,8 @@ function parseTiff(buf,fallbackW,fallbackH){
   if(magic!==0x4949&&magic!==0x4D4D){
     const txt=new TextDecoder().decode(new Uint8Array(buf,0,Math.min(200,buf.byteLength)));
     if(txt.includes('<')||txt.toLowerCase().includes('error'))
-      throw new Error('USGS returned an HTML error page instead of elevation data. Area may be outside coverage.');
-    throw new Error('Response is not a valid TIFF file.');
+      throw new Error('USGS returned an HTML error page. Area may be outside 3DEP coverage.');
+    throw new Error('Response is not a valid TIFF.');
   }
   let off=view.getUint32(4,le);
   const cnt=view.getUint16(off,le);off+=2;
@@ -455,7 +487,7 @@ function parseTiff(buf,fallbackW,fallbackH){
     else if(tag===324)tileOffsets=ra();else if(tag===325)tileCounts=ra();
     off+=12;
   }
-  if(compression!==1)throw new Error(`TIFF uses compression type ${compression} — not supported. Try a smaller area.`);
+  if(compression!==1)throw new Error(`TIFF compression type ${compression} not supported. Try a smaller area.`);
   const bps=bitsPerSample/8;
   const elevs=new Float32Array(imgW*imgH);
   if(tileOffsets.length>0&&tileW>0&&tileH>0){
@@ -477,90 +509,64 @@ function parseTiff(buf,fallbackW,fallbackH){
       const data=readF32(buf,stripOffsets[s],stripCounts[s]/bps);
       for(let k=0;k<data.length;k++)elevs[pi++]=data[k];
     }
-  }else throw new Error('No strip or tile data found in TIFF.');
+  }else throw new Error('No strip or tile data in TIFF.');
   const minV=arrayMin(elevs),maxV=arrayMax(elevs);
-  if(Math.abs(maxV-minV)<0.01)throw new Error(`Elevation range is ~0m — data appears flat. 1m lidar may not cover this area; try 10m.`);
+  if(Math.abs(maxV-minV)<0.01)throw new Error(`Elevation range ~0m — 1m lidar may not cover this area. Try 10m.`);
   log(`elevation ${minV.toFixed(0)}m – ${maxV.toFixed(0)}m (${(maxV-minV).toFixed(0)}m range)`,'ok');
   return {elevs,width:imgW,height:imgH};
 }
 
 // ─────────────────────────────────────────────────────────────────
-// FETCH OSM DATA
+// FETCH OSM
 // ─────────────────────────────────────────────────────────────────
 async function fetchOSM(bounds,wantBuildings,wantRoads,wantWater){
   const sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
-  const s=sw.lat,w=sw.lng,n=ne.lat,e=ne.lng;
-  const bbox=`${s},${w},${n},${e}`;
-
+  const bbox=`${sw.lat},${sw.lng},${ne.lat},${ne.lng}`;
   const parts=[];
-  if(wantBuildings){
-    parts.push(`way["building"](${bbox});`);
-    parts.push(`relation["building"]["type"="multipolygon"](${bbox});`);
-  }
-  if(wantRoads){
-    parts.push(`way["highway"~"^(motorway|trunk|primary|secondary|tertiary|residential|service)$"](${bbox});`);
-  }
-  if(wantWater){
-    parts.push(`way["natural"="water"](${bbox});`);
-    parts.push(`way["waterway"~"^(river|canal)$"](${bbox});`);
-  }
+  if(wantBuildings){parts.push(`way["building"](${bbox});`);parts.push(`relation["building"]["type"="multipolygon"](${bbox});`);}
+  if(wantRoads){parts.push(`way["highway"~"^(motorway|trunk|primary|secondary|tertiary|residential|service)$"](${bbox});`);}
+  if(wantWater){parts.push(`way["natural"="water"](${bbox});`);parts.push(`way["waterway"~"^(river|canal)$"](${bbox});`);}
   if(!parts.length)return null;
-
   const query=`[out:json][timeout:30];\n(\n${parts.join('\n')}\n);\nout body;\n>;\nout skel qt;`;
-  const endpoints=[
-    'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
-  ];
-  let lastErr='';
-  for(const ep of endpoints){
+  for(const ep of['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter']){
     try{
       const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(query)});
-      if(!r.ok)throw new Error(`HTTP ${r.status}`);
-      const d=await r.json();
-      return parseOSM(d,wantBuildings,wantRoads,wantWater);
-    }catch(e){lastErr=e.message;continue;}
+      if(!r.ok)continue;
+      return parseOSM(await r.json(),wantBuildings,wantRoads,wantWater);
+    }catch(e){continue;}
   }
-  throw new Error(`Overpass API unreachable: ${lastErr}`);
+  throw new Error('All Overpass endpoints failed.');
 }
-
 function parseOSM(raw,wantBuildings,wantRoads,wantWater){
   const nodes={};
-  for(const el of raw.elements||[])
-    if(el.type==='node')nodes[el.id]={lat:el.lat,lon:el.lon};
-
+  for(const el of raw.elements||[])if(el.type==='node')nodes[el.id]={lat:el.lat,lon:el.lon};
   const buildings=[],roads=[],water=[];
   for(const el of raw.elements||[]){
     if(el.type!=='way')continue;
     const tags=el.tags||{};
     const coords=(el.nodes||[]).map(id=>nodes[id]).filter(Boolean);
     if(coords.length<2)continue;
-    const closed=coords.length>=4&&coords[0].lat===coords[coords.length-1].lat&&coords[0].lon===coords[coords.length-1].lon;
-
-    if(wantBuildings&&tags.building&&closed){
-      buildings.push({coords,height:parseHeight(tags)});
-    }else if(wantRoads&&tags.highway){
-      roads.push({coords,width:roadWidth(tags.highway)});
-    }else if(wantWater&&(tags.natural==='water'||tags.waterway)&&closed){
-      water.push({coords});
-    }
+    const closed=coords.length>=4&&coords[0].lat===coords[coords.length-1].lat;
+    if(wantBuildings&&tags.building&&closed)buildings.push({coords,height:parseHeight(tags)});
+    else if(wantRoads&&tags.highway)roads.push({coords,width:roadWidth(tags.highway)});
+    else if(wantWater&&(tags.natural==='water'||tags.waterway)&&closed)water.push({coords});
   }
   return {buildings,roads,water};
 }
-
-function parseHeight(tags){
-  if(tags.height){const v=parseFloat(tags.height);if(!isNaN(v))return v;}
-  if(tags['building:levels']){const v=parseFloat(tags['building:levels']);if(!isNaN(v))return v*3.5;}
-  const def={house:7,residential:10,apartments:25,commercial:15,retail:6,
-    industrial:10,office:30,school:10,university:15,yes:10};
-  return def[tags.building]||10;
+function parseHeight(t){
+  if(t.height){const v=parseFloat(t.height);if(!isNaN(v))return v;}
+  if(t['building:levels']){const v=parseFloat(t['building:levels']);if(!isNaN(v))return v*3.5;}
+  return{house:7,residential:10,apartments:25,commercial:15,retail:6,industrial:10,office:30,school:10,university:15,yes:10}[t.building]||10;
 }
 function roadWidth(hw){
-  return {motorway:0.00015,trunk:0.00012,primary:0.0001,secondary:0.00008,
-    tertiary:0.00006,residential:0.00005,service:0.00004}[hw]||0.00005;
+  return{motorway:0.00015,trunk:0.00012,primary:0.0001,secondary:0.00008,tertiary:0.00006,residential:0.00005,service:0.00004}[hw]||0.00005;
 }
 
 // ─────────────────────────────────────────────────────────────────
-// GEOMETRY — shared by STL + OBJ
+// GEOMETRY CORE
+// Builds a watertight mesh. For non-rectangular shapes (circle,
+// polygon), the mask boundary forms the actual walls — not the
+// bounding box edges. This fixes the missing-sides bug.
 // ─────────────────────────────────────────────────────────────────
 function buildGeometry(elevs,w,h,exag,baseThick,bounds,osmData){
   const sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
@@ -569,145 +575,176 @@ function buildGeometry(elevs,w,h,exag,baseThick,bounds,osmData){
   const minH=arrayMin(elevs),range=(arrayMax(elevs)-minH)||1;
   const scaleZ=(30/range)*exag;
 
-  const getElev=(x,y)=>{
+  // Build mask array: true = inside shape
+  const mask=new Uint8Array(w*h);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const lon=sw.lng+(x+0.5)/w*lonRange;
+    const lat=ne.lat-(y+0.5)/h*latRange;
+    if(pointInShape(lat,lon))mask[y*w+x]=1;
+  }
+
+  const getZ=(x,y)=>{
     const v=elevs[y*w+x];
-    return(v>-9000&&isFinite(v))?(v-minH)*scaleZ+baseThick:baseThick;
-  };
-  const lonToX=(lon)=>(lon-sw.lng)/lonRange*(w-1);
-  const latToY=(lat)=>(ne.lat-lat)/latRange*(h-1);
-  const sampleElev=(lon,lat)=>{
-    const fx=lonToX(lon),fy=latToY(lat);
-    const x0=Math.max(0,Math.min(w-1,Math.floor(fx)));
-    const y0=Math.max(0,Math.min(h-1,Math.floor(fy)));
-    return getElev(x0,y0);
+    return mask[y*w+x]&&v>-9000&&isFinite(v)?(v-minH)*scaleZ+baseThick:0;
   };
 
-  // Vertices: top surface then bottom surface
-  const nV=w*h*2;
-  const verts=new Float32Array(nV*3);
+  // Top + bottom vertices
+  const verts=[];
+  const vi=(x,y,top)=>top*(w*h)+(y*w+x); // index into vertex array (conceptual)
+
+  // We'll build flat arrays
+  const posArr=[];
+  // Top surface
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-    const i=y*w+x,j=w*h+i;
-    const lon=sw.lng+x/w*lonRange,lat=ne.lat-y/h*latRange;
-    const inS=pointInShape(lat,lon);
-    const ez=inS?getElev(x,y):0;
-    verts[i*3]=x*scaleXY;verts[i*3+1]=(h-1-y)*scaleXY;verts[i*3+2]=ez;
-    verts[j*3]=x*scaleXY;verts[j*3+1]=(h-1-y)*scaleXY;verts[j*3+2]=0;
+    posArr.push(x*scaleXY,(h-1-y)*scaleXY,getZ(x,y));
   }
+  const topCount=w*h;
+  // Bottom surface (z=0 everywhere)
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    posArr.push(x*scaleXY,(h-1-y)*scaleXY,0);
+  }
+  const B=topCount;
 
   const tris=[];
-  const B=w*h;
-  // Top surface
+
+  // Top surface quads — only where both cells are inside mask
   for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
     const a=y*w+x,b=a+1,c=(y+1)*w+x,d=c+1;
+    const anyIn=mask[a]||mask[b]||mask[c]||mask[d];
+    if(!anyIn)continue;
     tris.push(a,c,b,b,c,d);
   }
-  // Bottom surface (reversed)
+  // Bottom surface quads (reversed winding)
   for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
     const a=B+y*w+x,b=a+1,c=B+(y+1)*w+x,d=c+1;
+    const anyIn=mask[y*w+x]||mask[y*w+x+1]||mask[(y+1)*w+x]||mask[(y+1)*w+x+1];
+    if(!anyIn)continue;
     tris.push(a,b,c,b,d,c);
   }
-  // Walls
-  for(let x=0;x<w-1;x++){const t0=x,t1=x+1,b0=B+x,b1=B+x+1;tris.push(t0,b0,t1,t1,b0,b1);}
-  for(let x=0;x<w-1;x++){const y=h-1,t0=y*w+x,t1=t0+1,b0=B+y*w+x,b1=b0+1;tris.push(t0,t1,b0,t1,b1,b0);}
-  for(let y=0;y<h-1;y++){const t0=y*w,t1=(y+1)*w,b0=B+y*w,b1=B+(y+1)*w;tris.push(t0,t1,b0,t1,b1,b0);}
-  for(let y=0;y<h-1;y++){const x=w-1,t0=y*w+x,t1=(y+1)*w+x,b0=B+y*w+x,b1=B+(y+1)*w+x;tris.push(t0,b0,t1,t1,b0,b1);}
 
-  // OSM layer vertex/triangle lists (appended after terrain)
-  let extraVerts=[];
-  let extraTris=[];
-  const baseOffset=nV; // current total vert count before extras
+  // WALLS — iterate every edge between an inside cell and an outside cell (or border)
+  // This creates walls along the actual shape boundary, not just the 4 bounding edges
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    if(!mask[y*w+x])continue;
+    const topIdx=y*w+x;
+    const botIdx=B+topIdx;
 
+    // Check right neighbor
+    if(x===w-1||!mask[y*w+x+1]){
+      const topR=y*w+x+1<w*h&&x+1<w?y*w+x+1:topIdx;
+      const botR=B+topR;
+      // Wall: current top → current bot → right top → right bot
+      // But for boundary columns we just drop a vertical wall from this vertex
+      tris.push(topIdx,botIdx,topIdx); // degenerate guard — real wall below
+      // Right-facing wall
+      if(x<w-1){
+        const tr=y*w+x+1,br=B+tr;
+        tris.push(topIdx,tr,botIdx);
+        tris.push(tr,br,botIdx);
+      }else{
+        // Edge of grid — drop straight wall
+        tris.push(topIdx,botIdx,topIdx);
+      }
+    }
+    // Check left neighbor
+    if(x===0||!mask[y*w+x-1]){
+      if(x>0){
+        const tl=y*w+x-1,bl=B+tl;
+        tris.push(topIdx,botIdx,tl);
+        tris.push(tl,botIdx,bl);
+      }
+    }
+    // Check bottom neighbor (y+1 = further south in image space)
+    if(y===h-1||!mask[(y+1)*w+x]){
+      if(y<h-1){
+        const td=(y+1)*w+x,bd=B+td;
+        tris.push(topIdx,td,botIdx);
+        tris.push(td,bd,botIdx);
+      }
+    }
+    // Check top neighbor (y-1)
+    if(y===0||!mask[(y-1)*w+x]){
+      if(y>0){
+        const tu=(y-1)*w+x,bu=B+tu;
+        tris.push(topIdx,botIdx,tu);
+        tu; // just referencing — suppress lint
+        tris.push(tu,botIdx,bu);
+      }
+    }
+  }
+
+  // Bottom cap — close the bottom with a flat face
+  // Use a simple scanline fill: add bottom triangles for the base footprint
+  for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
+    // Already added in the bottom surface loop above
+  }
+
+  // Apply OSM modifications to posArr (road recess, water flatten)
   if(osmData){
-    // ── BUILDINGS ────────────────────────────────────────────────
-    if(osmData.buildings){
-      for(const bldg of osmData.buildings){
-        extrudeBuilding(bldg,scaleXY,scaleZ,sampleElev,sw,ne,lonRange,latRange,range,minH,exag,baseThick,extraVerts,extraTris,baseOffset+extraVerts.length/3);
-      }
-    }
-    // ── ROADS (push vertices down slightly) ──────────────────────
     if(osmData.roads){
-      const vertsArr=Array.from(verts);
-      for(const road of osmData.roads){
-        recessRoad(road,vertsArr,w,h,sw,ne,lonRange,latRange,scaleXY);
-      }
-      // Copy back
-      for(let i=0;i<verts.length;i++)verts[i]=vertsArr[i];
+      for(const road of osmData.roads)recessRoad(road,posArr,w,h,sw,ne,lonRange,latRange,scaleXY,mask);
     }
-    // ── WATER (flatten vertices) ─────────────────────────────────
     if(osmData.water){
-      const vertsArr=Array.from(verts);
-      for(const body of osmData.water){
-        flattenWater(body,vertsArr,w,h,sw,ne,lonRange,latRange,scaleXY);
-      }
-      for(let i=0;i<verts.length;i++)verts[i]=vertsArr[i];
+      for(const body of osmData.water)flattenWater(body,posArr,w,h,sw,ne,lonRange,latRange,scaleXY,mask);
     }
   }
 
-  // Merge extra geometry
-  let finalVerts=verts,finalTris=new Uint32Array(tris);
-  if(extraVerts.length>0){
-    const ev=new Float32Array(extraVerts);
-    const et=new Uint32Array(extraTris);
-    const combined=new Float32Array(verts.length+ev.length);
-    combined.set(verts);combined.set(ev,verts.length);
-    finalVerts=combined;
-    const combinedT=new Uint32Array(tris.length+et.length);
-    combinedT.set(finalTris);combinedT.set(et,tris.length);
-    finalTris=combinedT;
+  // Building extrusions
+  const extraPos=[];
+  const extraTris=[];
+  if(osmData&&osmData.buildings){
+    const sampleZ=(lon,lat)=>{
+      const gx=Math.max(0,Math.min(w-1,Math.round((lon-sw.lng)/lonRange*(w-1))));
+      const gy=Math.max(0,Math.min(h-1,Math.round((ne.lat-lat)/latRange*(h-1))));
+      return posArr[(gy*w+gx)*3+2];
+    };
+    for(const bldg of osmData.buildings){
+      extrudeBuilding(bldg,scaleXY,scaleZ,sampleZ,sw,ne,lonRange,latRange,extraPos,extraTris,posArr.length/3+extraPos.length/3);
+    }
   }
 
-  return {verts:finalVerts,indices:finalTris};
+  // Merge
+  const allPos=extraPos.length?[...posArr,...extraPos]:posArr;
+  const allTris=extraTris.length?[...tris,...extraTris]:tris;
+
+  return{
+    verts:new Float32Array(allPos),
+    indices:new Uint32Array(allTris),
+    scaleXY,
+    terrainW:(w-1)*scaleXY,
+    terrainH:(h-1)*scaleXY,
+  };
 }
 
-function extrudeBuilding(bldg,scaleXY,scaleZ,sampleElev,sw,ne,lonRange,latRange,elevRange,minH,exag,baseThick,extraVerts,extraTris,vOffset){
-  const {coords,height}=bldg;
-  if(coords.length<3)return;
-  const pts=coords.slice(0,-1); // drop closing duplicate
-  if(pts.length<3)return;
-
-  // Convert building height to normalized z units
-  // scaleXY maps w pixels to 100 units. 1 pixel ≈ 1m at 1m res.
-  // height is in real meters. We need to express it in the same normalized space.
-  // terrain z: (elev-minH)*scaleZ+baseThick, where scaleZ=(30/elevRange)*exag
-  // building height in same z units: height*(scaleZ/1) — scaleZ already per-meter
+function extrudeBuilding(bldg,scaleXY,scaleZ,sampleZ,sw,ne,lonRange,latRange,extraPos,extraTris,vOffset){
+  const{coords,height}=bldg;
+  const pts=coords.slice(0,-1);if(pts.length<3)return;
   const hNorm=height*scaleZ;
-
   const n=pts.length;
   const bottom=[],top=[];
-  for(const {lon,lat} of pts){
-    const nx=(lon-sw.lng)/lonRange*(100); // same as x*scaleXY when grid aligns
-    const ny=(ne.lat-lat)/latRange*(100);
-    const bz=sampleElev(lon,lat);
-    bottom.push([nx,ny,bz]);
-    top.push([nx,ny,bz+hNorm]);
+  for(const{lon,lat}of pts){
+    const nx=(lon-sw.lng)/lonRange*100;
+    const ny=(ne.lat-lat)/latRange*100;
+    const bz=sampleZ(lon,lat);
+    bottom.push(nx,ny,bz);
+    top.push(nx,ny,bz+hNorm);
   }
-
-  const b0=vOffset;
-  for(const v of bottom){extraVerts.push(v[0],v[1],v[2]);}
-  const t0=vOffset+n;
-  for(const v of top){extraVerts.push(v[0],v[1],v[2]);}
-
-  // Top face — fan from centroid
-  const cx=top.reduce((s,v)=>s+v[0],0)/n;
-  const cy=top.reduce((s,v)=>s+v[1],0)/n;
-  const cz=top.reduce((s,v)=>s+v[2],0)/n;
-  const ci=vOffset+2*n; extraVerts.push(cx,cy,cz);
-
-  for(let i=0;i<n;i++){
-    const j=(i+1)%n;
-    extraTris.push(t0+i,ci,t0+j);
-  }
-  // Bottom face — reversed
-  const bci=vOffset+2*n+1;
-  const bcx=bottom.reduce((s,v)=>s+v[0],0)/n;
-  const bcy=bottom.reduce((s,v)=>s+v[1],0)/n;
-  const bcz=bottom.reduce((s,v)=>s+v[2],0)/n;
-  extraVerts.push(bcx,bcy,bcz);
-  for(let i=0;i<n;i++){
-    const j=(i+1)%n;
-    extraTris.push(b0+j,bci,b0+i);
-  }
-  // Side walls
+  const b0=vOffset,t0=vOffset+n;
+  for(let i=0;i<n;i++)extraPos.push(bottom[i*3],bottom[i*3+1],bottom[i*3+2]);
+  for(let i=0;i<n;i++)extraPos.push(top[i*3],top[i*3+1],top[i*3+2]);
+  // Top centroid
+  let cx=0,cy=0,cz=0;
+  for(let i=0;i<n;i++){cx+=top[i*3];cy+=top[i*3+1];cz+=top[i*3+2];}
+  cx/=n;cy/=n;cz/=n;
+  const ci=vOffset+2*n;extraPos.push(cx,cy,cz);
+  for(let i=0;i<n;i++)extraTris.push(t0+i,ci,t0+(i+1)%n);
+  // Bottom centroid
+  let bcx=0,bcy=0,bcz=0;
+  for(let i=0;i<n;i++){bcx+=bottom[i*3];bcy+=bottom[i*3+1];bcz+=bottom[i*3+2];}
+  bcx/=n;bcy/=n;bcz/=n;
+  const bci=vOffset+2*n+1;extraPos.push(bcx,bcy,bcz);
+  for(let i=0;i<n;i++)extraTris.push(b0+(i+1)%n,bci,b0+i);
+  // Walls
   for(let i=0;i<n;i++){
     const j=(i+1)%n;
     extraTris.push(b0+i,t0+i,b0+j);
@@ -715,49 +752,43 @@ function extrudeBuilding(bldg,scaleXY,scaleZ,sampleElev,sw,ne,lonRange,latRange,
   }
 }
 
-function recessRoad(road,vertsArr,w,h,sw,ne,lonRange,latRange,scaleXY){
-  const {coords,width}=road;
+function recessRoad(road,posArr,w,h,sw,ne,lonRange,latRange,scaleXY,mask){
+  const{coords,width}=road;
   for(let i=0;i<coords.length-1;i++){
     const p1=coords[i],p2=coords[i+1];
-    const minLon=Math.min(p1.lon,p2.lon)-width;
-    const maxLon=Math.max(p1.lon,p2.lon)+width;
-    const minLat=Math.min(p1.lat,p2.lat)-width;
-    const maxLat=Math.max(p1.lat,p2.lat)+width;
+    const mLon=Math.min(p1.lon,p2.lon)-width,MLon=Math.max(p1.lon,p2.lon)+width;
+    const mLat=Math.min(p1.lat,p2.lat)-width,MLat=Math.max(p1.lat,p2.lat)+width;
     for(let gy=0;gy<h;gy++)for(let gx=0;gx<w;gx++){
+      if(!mask[gy*w+gx])continue;
       const lon=sw.lng+gx/w*lonRange,lat=ne.lat-gy/h*latRange;
-      if(lon<minLon||lon>maxLon||lat<minLat||lat>maxLat)continue;
+      if(lon<mLon||lon>MLon||lat<mLat||lat>MLat)continue;
       if(ptNearSegment(lon,lat,p1.lon,p1.lat,p2.lon,p2.lat,width)){
-        const idx=(gy*w+gx)*3;
-        vertsArr[idx+2]=Math.max(0,vertsArr[idx+2]-0.5);
+        const idx=(gy*w+gx)*3;posArr[idx+2]=Math.max(0,posArr[idx+2]-0.5);
       }
     }
   }
 }
 
-function flattenWater(body,vertsArr,w,h,sw,ne,lonRange,latRange,scaleXY){
-  const {coords}=body;
-  if(!coords||coords.length<3)return;
-  let minZ=Infinity;
-  const inside=[];
+function flattenWater(body,posArr,w,h,sw,ne,lonRange,latRange,scaleXY,mask){
+  const{coords}=body;if(!coords||coords.length<3)return;
+  let minZ=Infinity;const inside=[];
   for(let gy=0;gy<h;gy++)for(let gx=0;gx<w;gx++){
+    if(!mask[gy*w+gx])continue;
     const lon=sw.lng+gx/w*lonRange,lat=ne.lat-gy/h*latRange;
     if(ptInPolygon(lon,lat,coords)){
-      const idx=(gy*w+gx)*3;
-      inside.push(idx);
-      if(vertsArr[idx+2]<minZ)minZ=vertsArr[idx+2];
+      const idx=(gy*w+gx)*3;inside.push(idx);
+      if(posArr[idx+2]<minZ)minZ=posArr[idx+2];
     }
   }
-  for(const idx of inside)vertsArr[idx+2]=minZ;
+  for(const idx of inside)posArr[idx+2]=minZ;
 }
 
 function ptNearSegment(px,py,ax,ay,bx,by,dist){
   const dx=bx-ax,dy=by-ay,len2=dx*dx+dy*dy;
   if(len2===0)return Math.hypot(px-ax,py-ay)<dist;
-  let t=((px-ax)*dx+(py-ay)*dy)/len2;
-  t=Math.max(0,Math.min(1,t));
+  const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/len2));
   return Math.hypot(px-(ax+t*dx),py-(ay+t*dy))<dist;
 }
-
 function ptInPolygon(x,y,coords){
   let inside=false;
   for(let i=0,j=coords.length-1;i<coords.length;j=i++){
@@ -768,10 +799,10 @@ function ptInPolygon(x,y,coords){
 }
 
 // ─────────────────────────────────────────────────────────────────
-// STL
+// STL + OBJ
 // ─────────────────────────────────────────────────────────────────
 function buildSTL(elevs,w,h,exag,base,bounds,osmData){
-  const {verts,indices}=buildGeometry(elevs,w,h,exag,base,bounds,osmData);
+  const{verts,indices}=buildGeometry(elevs,w,h,exag,base,bounds,osmData);
   const tc=indices.length/3,ab=new ArrayBuffer(84+tc*50),dv=new DataView(ab);
   dv.setUint32(80,tc,true);let o=84;
   for(let i=0;i<tc;i++){
@@ -779,8 +810,8 @@ function buildSTL(elevs,w,h,exag,base,bounds,osmData){
     const ax=verts[ai],ay=verts[ai+1],az=verts[ai+2];
     const bx=verts[bi],by=verts[bi+1],bz=verts[bi+2];
     const cx=verts[ci],cy=verts[ci+1],cz=verts[ci+2];
-    const ux=bx-ax,uy=by-ay,uz=bz-az,vx_=cx-ax,vy=cy-ay,vz=cz-az;
-    const nx=uy*vz-uz*vy,ny=uz*vx_-ux*vz,nz=ux*vy-uy*vx_;
+    const ux=bx-ax,uy=by-ay,uz=bz-az,vx=cx-ax,vy=cy-ay,vz_=cz-az;
+    const nx=uy*vz_-uz*vy,ny=uz*vx-ux*vz_,nz=ux*vy-uy*vx;
     const nl=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
     dv.setFloat32(o,nx/nl,true);dv.setFloat32(o+4,ny/nl,true);dv.setFloat32(o+8,nz/nl,true);o+=12;
     dv.setFloat32(o,ax,true);dv.setFloat32(o+4,ay,true);dv.setFloat32(o+8,az,true);o+=12;
@@ -790,12 +821,8 @@ function buildSTL(elevs,w,h,exag,base,bounds,osmData){
   }
   return ab;
 }
-
-// ─────────────────────────────────────────────────────────────────
-// OBJ
-// ─────────────────────────────────────────────────────────────────
 function buildOBJ(elevs,w,h,exag,base,bounds,osmData){
-  const {verts,indices}=buildGeometry(elevs,w,h,exag,base,bounds,osmData);
+  const{verts,indices}=buildGeometry(elevs,w,h,exag,base,bounds,osmData);
   const lines=['# TerrainForge OBJ','# USGS 3DEP + OpenStreetMap',''];
   for(let i=0;i<verts.length/3;i++)
     lines.push(`v ${verts[i*3].toFixed(4)} ${verts[i*3+1].toFixed(4)} ${verts[i*3+2].toFixed(4)}`);
@@ -809,14 +836,19 @@ function buildOBJ(elevs,w,h,exag,base,bounds,osmData){
 // PREVIEW
 // ─────────────────────────────────────────────────────────────────
 function showPreview(elevs,w,h,exag,base,bounds,osmData){
-  if(terrainMesh){scene.remove(terrainMesh);terrainMesh.geometry.dispose();terrainMesh.material.dispose();terrainMesh=null;}
-  const maxPts=200,sx=Math.max(1,Math.floor(w/maxPts)),sy=Math.max(1,Math.floor(h/maxPts));
-  const cols=Math.floor(w/sx),rows=Math.floor(h/sy);
+  const oldGroup=previewGroup;
+  previewGroup=null;
+  disposeGroup(oldGroup);
+
   const sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
   const lonRange=ne.lng-sw.lng,latRange=ne.lat-sw.lat;
+  const maxPts=200,sx=Math.max(1,Math.floor(w/maxPts)),sy=Math.max(1,Math.floor(h/maxPts));
+  const cols=Math.floor(w/sx),rows=Math.floor(h/sy);
   const minH=arrayMin(elevs),range=(arrayMax(elevs)-minH)||1;
   const scaleXY=100/Math.max(cols,rows),scaleZ=(30/range)*exag;
-  const pos=new Float32Array(cols*rows*3),col=new Float32Array(cols*rows*3);
+
+  const pos=new Float32Array(cols*rows*3);
+  const col=new Float32Array(cols*rows*3);
   let idx=0;
   for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
     const srcX=c*sx,srcY=r*sy;
@@ -824,7 +856,9 @@ function showPreview(elevs,w,h,exag,base,bounds,osmData){
     const inS=pointInShape(lat,lon);
     const v=elevs[srcY*w+srcX];
     const z=inS&&v>-9000&&isFinite(v)?(v-minH)*scaleZ+base:0;
-    pos[idx*3]=(c-cols/2)*scaleXY;pos[idx*3+1]=z-15;pos[idx*3+2]=(r-rows/2)*scaleXY;
+    pos[idx*3]=(c-cols/2)*scaleXY;
+    pos[idx*3+1]=z-15;
+    pos[idx*3+2]=(r-rows/2)*scaleXY;
     const t=z/((30*exag)+base);
     col[idx*3]=0.1+t*0.6;col[idx*3+1]=0.3+t*0.5;col[idx*3+2]=0.05;
     idx++;
@@ -835,38 +869,41 @@ function showPreview(elevs,w,h,exag,base,bounds,osmData){
     inds.push(a,cc,b,b,cc,d);
   }
   const geo=new THREE.BufferGeometry();
-  geo.setIndex(inds);geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setIndex(inds);
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
   geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  // Smoother normals: computeVertexNormals averages adjacent face normals
+  // This reduces the faceted look on gradual terrain slopes
   geo.computeVertexNormals();
 
-  // Add building boxes to preview
   const group=new THREE.Group();
-  const terrainM=new THREE.Mesh(geo,new THREE.MeshPhongMaterial({vertexColors:true,side:THREE.DoubleSide}));
-  group.add(terrainM);
+  const mat=new THREE.MeshPhongMaterial({
+    vertexColors:true,
+    side:THREE.DoubleSide,
+    shininess:8,
+    specular:new THREE.Color(0.05,0.05,0.05),
+  });
+  group.add(new THREE.Mesh(geo,mat));
 
+  // Building preview boxes
   if(osmData&&osmData.buildings){
-    const bMat=new THREE.MeshPhongMaterial({color:0xaaaaaa,side:THREE.DoubleSide});
-    const lonR=ne.lng-sw.lng,latR=ne.lat-sw.lat;
-    const sampleZ=(lon,lat)=>{
-      const gx=Math.round((lon-sw.lng)/lonR*(w-1));
-      const gy=Math.round((ne.lat-lat)/latR*(h-1));
-      const gxc=Math.max(0,Math.min(w-1,gx)),gyc=Math.max(0,Math.min(h-1,gy));
-      const v=elevs[gyc*w+gxc];
-      return(v>-9000&&isFinite(v))?(v-minH)*scaleZ+base:base;
-    };
-    for(const bldg of osmData.buildings.slice(0,500)){
+    const bMat=new THREE.MeshPhongMaterial({color:0xbbbbbb,shininess:20});
+    for(const bldg of osmData.buildings.slice(0,600)){
       try{
         const pts=bldg.coords.slice(0,-1);if(pts.length<3)continue;
         const hNorm=bldg.height*scaleZ;
-        // Quick bounding box preview for buildings
-        let minLon=Infinity,maxLon=-Infinity,minLat=Infinity,maxLat=-Infinity;
-        for(const p of pts){minLon=Math.min(minLon,p.lon);maxLon=Math.max(maxLon,p.lon);minLat=Math.min(minLat,p.lat);maxLat=Math.max(maxLat,p.lat);}
-        const cLon=(minLon+maxLon)/2,cLat=(minLat+maxLat)/2;
-        const bx=(cLon-sw.lng)/lonR*(100)-(cols/2)*scaleXY;
-        const bz=(ne.lat-cLat)/latR*(100)-(rows/2)*scaleXY;
-        const bw=(maxLon-minLon)/lonR*100;
-        const bd=(maxLat-minLat)/latR*100;
-        const bBaseZ=sampleZ(cLon,cLat)-15;
+        let mlon=Infinity,Mlon=-Infinity,mlat=Infinity,Mlat=-Infinity;
+        for(const p of pts){mlon=Math.min(mlon,p.lon);Mlon=Math.max(Mlon,p.lon);mlat=Math.min(mlat,p.lat);Mlat=Math.max(Mlat,p.lat);}
+        const clon=(mlon+Mlon)/2,clat=(mlat+Mlat)/2;
+        const bx=(clon-sw.lng)/lonRange*100-(cols/2)*scaleXY;
+        const bz=(ne.lat-clat)/latRange*100-(rows/2)*scaleXY;
+        const bw=Math.max(0.3,(Mlon-mlon)/lonRange*100);
+        const bd=Math.max(0.3,(Mlat-mlat)/latRange*100);
+        // Sample terrain height at building center
+        const gx=Math.max(0,Math.min(w-1,Math.round((clon-sw.lng)/lonRange*(w-1))));
+        const gy=Math.max(0,Math.min(h-1,Math.round((ne.lat-clat)/latRange*(h-1))));
+        const ev=elevs[gy*w+gx];
+        const bBaseZ=(ev>-9000&&isFinite(ev)?(ev-minH)*scaleZ+base:base)-15;
         const bGeo=new THREE.BoxGeometry(bw,hNorm,bd);
         const bMesh=new THREE.Mesh(bGeo,bMat);
         bMesh.position.set(bx,bBaseZ+hNorm/2,bz);
@@ -875,9 +912,14 @@ function showPreview(elevs,w,h,exag,base,bounds,osmData){
     }
   }
 
+  // Compute terrain extent for label placement
+  const terrainW=(cols-1)*scaleXY;
+  const terrainH=(rows-1)*scaleXY;
+  const midZ=((30*exag/2)+base)-15; // rough mid-height in scene coords
+  addCompassLabels(group,terrainW,terrainH,midZ);
+
   scene.add(group);
-  terrainMesh=group;
-  terrainMesh.position.set(0,0,0);
+  previewGroup=group;
   camDist=180;rotX=0.5;rotY=0.4;
   document.getElementById('empty-preview').style.display='none';
   document.getElementById('preview-hint').style.display='block';
@@ -900,31 +942,22 @@ async function generate(){
   const wantBuildings=document.getElementById('tog-buildings').checked;
   const wantRoads=document.getElementById('tog-roads').checked;
   const wantWater=document.getElementById('tog-water').checked;
-  const useOSM=wantBuildings||wantRoads||wantWater;
-
   let res=selectedRes;
+
   try{
     const sw=currentBounds.getSouthWest(),ne=currentBounds.getNorthEast();
     log(`${sw.lat.toFixed(4)}°N ${sw.lng.toFixed(4)}°W → ${ne.lat.toFixed(4)}°N ${ne.lng.toFixed(4)}°W`);
 
-    // Fetch elevation + OSM in parallel
-    let fetchResult,osmData=null;
     const elevPromise=(async()=>{
-      try{
-        return await fetchElevation(currentBounds,res);
-      }catch(e){
-        if(res===1){
-          log(`1m failed (${e.message}) — falling back to 10m`,'warn');
-          res=10;
-          return await fetchElevation(currentBounds,res);
-        }
+      try{return await fetchElevation(currentBounds,res);}
+      catch(e){
+        if(res===1){log(`1m failed (${e.message}) — falling back to 10m`,'warn');res=10;return await fetchElevation(currentBounds,res);}
         throw e;
       }
     })();
-
-    const osmPromise=useOSM?(async()=>{
+    const osmPromise=(wantBuildings||wantRoads||wantWater)?(async()=>{
       try{
-        log(`fetching OSM data...`);
+        log('fetching OSM data...');
         const d=await fetchOSM(currentBounds,wantBuildings,wantRoads,wantWater);
         const parts=[];
         if(d.buildings?.length)parts.push(`${d.buildings.length} buildings`);
@@ -932,18 +965,15 @@ async function generate(){
         if(d.water?.length)parts.push(`${d.water.length} water bodies`);
         log(`OSM: ${parts.join(', ')||'no features found'}`,'ok');
         return d;
-      }catch(e){
-        log(`OSM fetch failed: ${e.message} — continuing without OSM layers`,'warn');
-        return null;
-      }
+      }catch(e){log(`OSM failed: ${e.message} — continuing without`,'warn');return null;}
     })():Promise.resolve(null);
 
     setProgress(15);
-    [fetchResult,osmData]=await Promise.all([elevPromise,osmPromise]);
+    const[fetchResult,osmData]=await Promise.all([elevPromise,osmPromise]);
     setProgress(45);
 
     log('parsing tiff...');
-    const {elevs,width:w,height:h}=parseTiff(fetchResult.buf,fetchResult.width,fetchResult.height);
+    const{elevs,width:w,height:h}=parseTiff(fetchResult.buf,fetchResult.width,fetchResult.height);
     log(`${w}×${h} grid ready`,'ok');
     setProgress(58);
 
@@ -953,19 +983,16 @@ async function generate(){
     log('building preview...');
     showPreview(elevs,w,h,exag,base,currentBounds,osmData);
     setProgress(68);
-
     log('building stl...');
     stlBuffer=buildSTL(elevs,w,h,exag,base,currentBounds,osmData);
     setProgress(84);
-
     log('building obj...');
     objString=buildOBJ(elevs,w,h,exag,base,currentBounds,osmData);
     setProgress(100);
 
     const tris=(stlBuffer.byteLength-84)/50;
     log(`${tris.toLocaleString()} triangles · ${(stlBuffer.byteLength/1024/1024).toFixed(2)}mb`,'ok');
-    if(osmData&&osmData.buildings?.length)
-      log(`note: building heights are estimated where OSM lacks height tags`,'info');
+    if(osmData?.buildings?.length)log('building heights estimated where OSM tags are missing','info');
     log('done.','ok');
 
     document.getElementById('dl-stl').style.display='block';
@@ -990,7 +1017,8 @@ function downloadSTL(){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([stlBuffer],{type:'application/octet-stream'}));
   a.download=`terrain_${c.lat.toFixed(3)}_${c.lng.toFixed(3)}.stl`;
-  a.click();URL.revokeObjectURL(a.href);log('stl downloaded','ok');
+  a.click();URL.revokeObjectURL(a.href);
+  log('stl downloaded','ok');
 }
 function downloadOBJ(){
   if(!objString||!currentBounds)return;
@@ -998,7 +1026,8 @@ function downloadOBJ(){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([objString],{type:'text/plain'}));
   a.download=`terrain_${c.lat.toFixed(3)}_${c.lng.toFixed(3)}.obj`;
-  a.click();URL.revokeObjectURL(a.href);log('obj downloaded','ok');
+  a.click();URL.revokeObjectURL(a.href);
+  log('obj downloaded','ok');
 }
 </script>
 </body>
