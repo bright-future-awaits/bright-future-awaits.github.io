@@ -120,7 +120,7 @@ input[type=range]{flex:1;accent-color:var(--accent)}
       <div class="no-sel" id="no-sel">Draw a shape on the map</div>
       <div id="sel-stats" style="display:none">
         <div class="stat-grid">
-          <div class="stat"><div class="stat-val" id="stat-area">—</div><div class="stat-label">Area km²</div></div>
+          <div class="stat"><div class="stat-val" id="stat-area">—</div><div class="stat-label">Size (mi)</div></div>
           <div class="stat"><div class="stat-val" id="stat-pts">—</div><div class="stat-label">Grid samples</div></div>
         </div>
       </div>
@@ -390,9 +390,10 @@ function pointInShape(lat,lng){
 function updateStats(){
   if(!currentBounds)return;
   const sw=currentBounds.getSouthWest(),ne=currentBounds.getNorthEast();
-  const w=haverDist(sw.lat,sw.lng,sw.lat,ne.lng),h=haverDist(sw.lat,sw.lng,ne.lat,sw.lng);
-  document.getElementById('stat-area').textContent=(w*h).toFixed(2);
-  const px=Math.min(Math.round(w*1000/selectedRes),512),py=Math.min(Math.round(h*1000/selectedRes),512);
+  const wKm=haverDist(sw.lat,sw.lng,sw.lat,ne.lng),hKm=haverDist(sw.lat,sw.lng,ne.lat,sw.lng);
+  const wMi=(wKm*0.621371).toFixed(2), hMi=(hKm*0.621371).toFixed(2);
+  document.getElementById('stat-area').textContent=`${wMi}×${hMi}`;
+  const px=Math.min(Math.round(wKm*1000/selectedRes),512),py=Math.min(Math.round(hKm*1000/selectedRes),512);
   document.getElementById('stat-pts').textContent=px+'×'+py;
   document.getElementById('no-sel').style.display='none';
   document.getElementById('sel-stats').style.display='block';
@@ -564,9 +565,6 @@ function roadWidth(hw){
 
 // ─────────────────────────────────────────────────────────────────
 // GEOMETRY CORE
-// Builds a watertight mesh. For non-rectangular shapes (circle,
-// polygon), the mask boundary forms the actual walls — not the
-// bounding box edges. This fixes the missing-sides bug.
 // ─────────────────────────────────────────────────────────────────
 function buildGeometry(elevs,w,h,exag,baseThick,bounds,osmData){
   const sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
@@ -575,153 +573,117 @@ function buildGeometry(elevs,w,h,exag,baseThick,bounds,osmData){
   const minH=arrayMin(elevs),range=(arrayMax(elevs)-minH)||1;
   const scaleZ=(30/range)*exag;
 
-  // Build mask array: true = inside shape
+  // mask[y*w+x]=1 if grid vertex is inside the drawn shape
   const mask=new Uint8Array(w*h);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-    const lon=sw.lng+(x+0.5)/w*lonRange;
-    const lat=ne.lat-(y+0.5)/h*latRange;
+    const lon=sw.lng+x/(w-1)*lonRange;
+    const lat=ne.lat-y/(h-1)*latRange;
     if(pointInShape(lat,lon))mask[y*w+x]=1;
   }
 
   const getZ=(x,y)=>{
     const v=elevs[y*w+x];
-    return mask[y*w+x]&&v>-9000&&isFinite(v)?(v-minH)*scaleZ+baseThick:0;
+    return(v>-9000&&isFinite(v))?(v-minH)*scaleZ+baseThick:baseThick;
   };
 
-  // Top + bottom vertices
-  const verts=[];
-  const vi=(x,y,top)=>top*(w*h)+(y*w+x); // index into vertex array (conceptual)
-
-  // We'll build flat arrays
+  // posArr: w*h top verts then w*h bottom verts
   const posArr=[];
-  // Top surface
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-    posArr.push(x*scaleXY,(h-1-y)*scaleXY,getZ(x,y));
+    const z=mask[y*w+x]?getZ(x,y):baseThick;
+    posArr.push(x*scaleXY,(h-1-y)*scaleXY,z);
   }
-  const topCount=w*h;
-  // Bottom surface (z=0 everywhere)
+  const B=w*h;
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
     posArr.push(x*scaleXY,(h-1-y)*scaleXY,0);
   }
-  const B=topCount;
 
   const tris=[];
 
-  // ── TOP SURFACE ───────────────────────────────────────────────
-  // Emit a quad for every 2×2 block where all 4 corners are inside.
-  // If only some corners are inside, still emit partial triangles
-  // so the surface fills up to the mask boundary.
+  const tris=[];
+
+  // ── TOP SURFACE ──────────────────────────────────────────────
+  // Only emit quads where ALL 4 corners are inside the mask.
+  // This prevents floating disconnected triangles at the boundary.
   for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
-    const a=y*w+x, b=a+1, c=(y+1)*w+x, d=c+1;
-    const ia=mask[a],ib=mask[b],ic=mask[c],id=mask[d];
-    if(!ia&&!ib&&!ic&&!id)continue;
-    if(ia&&ib&&ic&&id){
+    const a=y*w+x,b=a+1,c=(y+1)*w+x,d=c+1;
+    if(mask[a]&&mask[b]&&mask[c]&&mask[d]){
       tris.push(a,c,b, b,c,d);
-    } else {
-      if(ia&&ib&&ic) tris.push(a,c,b);
-      if(ib&&ic&&id) tris.push(b,c,d);
-      if(ia&&ib&&id) tris.push(a,d,b);
-      if(ia&&ic&&id) tris.push(a,c,d);
     }
   }
 
-  // ── BOTTOM SURFACE ────────────────────────────────────────────
-  // Mirror of top surface but at z=0, reversed winding (normals point down).
+  // ── BOTTOM SURFACE ───────────────────────────────────────────
+  // Same footprint, reversed winding so normals point down.
   for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
-    const a=B+y*w+x, b=a+1, c=B+(y+1)*w+x, d=c+1;
-    const ia=mask[y*w+x],ib=mask[y*w+x+1],ic=mask[(y+1)*w+x],id=mask[(y+1)*w+x+1];
-    if(!ia&&!ib&&!ic&&!id)continue;
-    if(ia&&ib&&ic&&id){
+    const a=B+y*w+x,b=a+1,c=B+(y+1)*w+x,d=c+1;
+    if(mask[y*w+x]&&mask[y*w+x+1]&&mask[(y+1)*w+x]&&mask[(y+1)*w+x+1]){
       tris.push(a,b,c, b,d,c);
-    } else {
-      if(ia&&ib&&ic) tris.push(a,b,c);
-      if(ib&&ic&&id) tris.push(b,d,c);
-      if(ia&&ib&&id) tris.push(a,b,d);
-      if(ia&&ic&&id) tris.push(a,d,c);
     }
   }
 
-  // ── WALLS ─────────────────────────────────────────────────────
-  // A wall quad exists on every edge shared between an inside cell
-  // and an outside cell (or the grid boundary).
-  // Wall uses the TWO inside vertices (top + bottom) of that edge.
-  // We walk horizontal edges (between rows) and vertical edges (between cols).
+  // ── WALLS ────────────────────────────────────────────────────
+  // Walk every shared edge between two adjacent vertices.
+  // When one is inside and one outside, emit a wall quad that
+  // drops from the top surface to z=0.
+  // Only emit when BOTH vertices of the inside-side edge are
+  // part of a valid (all-4-inside) top quad — prevents orphaned walls.
 
-  // Vertical edges: between (x, y) and (x+1, y)
-  for(let y=0;y<h;y++)for(let x=0;x<w-1;x++){
-    const left=y*w+x, right=y*w+x+1;
-    const leftIn=mask[left], rightIn=mask[right];
-    if(leftIn===rightIn)continue; // same side, no wall needed
-    if(leftIn){
-      // Wall on the right face of 'left' cell
-      // Top of left, bottom of left — single-cell-wide wall strip
-      const tL=left, bL=B+left;
-      const tR=right, bR=B+right;
-      tris.push(tL,bL,tR, tR,bL,bR);
-    } else {
-      // Wall on the left face of 'right' cell
-      const tL=left, bL=B+left;
-      const tR=right, bR=B+right;
-      tris.push(tR,tL,bR, tL,bL,bR);
+  // Vertical edges (between column x and x+1, same row y)
+  for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
+    // Check the edge between (x,y)→(x,y+1) — a horizontal boundary
+    const tA=y*w+x, tC=(y+1)*w+x;       // left col top verts
+    const tB=y*w+x+1, tD=(y+1)*w+x+1;  // right col top verts
+    const bA=B+tA,bC=B+tC,bB=B+tB,bD=B+tD;
+
+    // Wall on right side of column x (between col x and x+1)
+    const leftQuad=mask[tA]&&mask[tC]; // col x edge both inside
+    const rightQuad=mask[tB]&&mask[tD]; // col x+1 edge both inside
+    if(leftQuad&&!rightQuad){
+      // Wall faces right (+x direction)
+      tris.push(tA,bA,tC, tC,bA,bC);
+    } else if(!leftQuad&&rightQuad){
+      // Wall faces left (-x direction)
+      tris.push(tB,tD,bB, tD,bD,bB);
+    }
+
+    // Wall on bottom of row y (between row y and y+1)
+    const topQuad=mask[tA]&&mask[tB];
+    const botQuad=mask[tC]&&mask[tD];
+    if(topQuad&&!botQuad){
+      // Wall faces south (+y in grid = south)
+      tris.push(tA,tB,bA, tB,bB,bA);
+    } else if(!topQuad&&botQuad){
+      // Wall faces north
+      tris.push(tC,bC,tD, tD,bC,bD);
     }
   }
 
-  // Horizontal edges: between (x, y) and (x, y+1)
-  for(let y=0;y<h-1;y++)for(let x=0;x<w;x++){
-    const top=y*w+x, bot=(y+1)*w+x;
-    const topIn=mask[top], botIn=mask[bot];
-    if(topIn===botIn)continue;
-    if(topIn){
-      const tT=top, bT=B+top;
-      const tB=bot, bB=B+bot;
-      tris.push(tT,tB,bT, tB,bB,bT);
-    } else {
-      const tT=top, bT=B+top;
-      const tB=bot, bB=B+bot;
-      tris.push(tB,tT,bB, tT,bT,bB);
+  // Grid boundary walls — handle the outermost edges explicitly
+  // Top border row (y=0): wall faces north
+  for(let x=0;x<w-1;x++){
+    if(mask[x]&&mask[x+1]){
+      const tA=x,tB=x+1,bA=B+x,bB=B+x+1;
+      tris.push(tA,bA,tB, tB,bA,bB);
     }
   }
-
-  // Grid boundary walls — cells on the edge of the grid that are inside
-  // need a wall dropping straight down on the grid border.
-  for(let x=0;x<w;x++){
-    // Top border (y=0)
-    if(mask[x]){
-      const t=x, b=B+x;
-      // No neighbor above — emit a degenerate-free single-column wall
-      // We just need the bottom face to be closed, which the bottom surface handles.
-      // But the border edge itself needs a wall strip — handled by pairing with
-      // the virtual outside row. Since there's no actual neighbor vertex, we
-      // duplicate the top vertex displaced one step. Instead, we skip this:
-      // the bottom face already covers z=0, and the vertical wall at x-edges
-      // is covered by the vertical-edge loop above for interior transitions.
-      // For the true grid boundary, we close it simply:
-      if(x<w-1){
-        const t2=x+1, b2=B+x+1;
-        if(mask[x]&&mask[x+1]){
-          // top row wall facing outward (y=-1 side)
-          tris.push(t,b,t2, t2,b,b2);
-        }
-      }
-    }
-    // Bottom border (y=h-1)
-    const bi=(h-1)*w+x;
-    if(mask[bi]&&x<w-1&&mask[bi+1]){
-      const t=(h-1)*w+x, b2=B+t, t2=t+1, b22=B+t2;
-      tris.push(t2,b2,t, t2,b22,b2);
+  // Bottom border row (y=h-1): wall faces south
+  for(let x=0;x<w-1;x++){
+    const tA=(h-1)*w+x,tB=tA+1,bA=B+tA,bB=B+tB;
+    if(mask[tA]&&mask[tB]){
+      tris.push(tA,tB,bA, tB,bB,bA);
     }
   }
-  for(let y=0;y<h;y++){
-    // Left border (x=0)
-    if(mask[y*w]&&y<h-1&&mask[(y+1)*w]){
-      const t=y*w, b=B+t, t2=(y+1)*w, b2=B+t2;
-      tris.push(t2,t,b, t2,b,b2);
+  // Left border col (x=0): wall faces west
+  for(let y=0;y<h-1;y++){
+    const tA=y*w,tC=(y+1)*w,bA=B+tA,bC=B+tC;
+    if(mask[tA]&&mask[tC]){
+      tris.push(tA,tC,bA, tC,bC,bA);
     }
-    // Right border (x=w-1)
-    const ri=y*w+(w-1);
-    if(mask[ri]&&y<h-1&&mask[ri+w]){
-      const t=ri, b=B+t, t2=ri+w, b2=B+t2;
-      tris.push(t,t2,b, t2,b2,b);
+  }
+  // Right border col (x=w-1): wall faces east
+  for(let y=0;y<h-1;y++){
+    const tA=y*w+(w-1),tC=(y+1)*w+(w-1),bA=B+tA,bC=B+tC;
+    if(mask[tA]&&mask[tC]){
+      tris.push(tA,bA,tC, tC,bA,bC);
     }
   }
 
@@ -745,7 +707,7 @@ function buildGeometry(elevs,w,h,exag,baseThick,bounds,osmData){
       return posArr[(gy*w+gx)*3+2];
     };
     for(const bldg of osmData.buildings){
-      extrudeBuilding(bldg,scaleXY,scaleZ,sampleZ,sw,ne,lonRange,latRange,extraPos,extraTris,posArr.length/3+extraPos.length/3);
+      extrudeBuilding(bldg,w,h,scaleXY,scaleZ,sampleZ,sw,ne,lonRange,latRange,extraPos,extraTris,posArr.length/3+extraPos.length/3);
     }
   }
 
@@ -762,39 +724,89 @@ function buildGeometry(elevs,w,h,exag,baseThick,bounds,osmData){
   };
 }
 
-function extrudeBuilding(bldg,scaleXY,scaleZ,sampleZ,sw,ne,lonRange,latRange,extraPos,extraTris,vOffset){
+// Ear-clipping polygon triangulation (handles convex + simple concave polygons)
+function earClip(pts2d){
+  // pts2d: [{x,y},...] — polygon vertices in order
+  const n=pts2d.length;
+  if(n<3)return[];
+  const idx=Array.from({length:n},(_,i)=>i);
+  const tris=[];
+  const cross=(o,a,b)=>(a.x-o.x)*(b.y-o.y)-(a.y-o.y)*(b.x-o.x);
+  const inTri=(p,a,b,c)=>{
+    const d1=cross(a,b,p),d2=cross(b,c,p),d3=cross(c,a,p);
+    const hasNeg=d1<0||d2<0||d3<0,hasPos=d1>0||d2>0||d3>0;
+    return!(hasNeg&&hasPos);
+  };
+  let iter=0;
+  while(idx.length>3&&iter<n*n){
+    iter++;
+    let earFound=false;
+    for(let i=0;i<idx.length;i++){
+      const prev=idx[(i+idx.length-1)%idx.length];
+      const cur=idx[i];
+      const next=idx[(i+1)%idx.length];
+      if(cross(pts2d[prev],pts2d[cur],pts2d[next])<=0)continue; // not convex
+      let isEar=true;
+      for(let j=0;j<idx.length;j++){
+        if(j===i||(i+idx.length-1)%idx.length===j||(i+1)%idx.length===j)continue;
+        if(inTri(pts2d[idx[j]],pts2d[prev],pts2d[cur],pts2d[next])){isEar=false;break;}
+      }
+      if(isEar){tris.push(prev,cur,next);idx.splice(i,1);earFound=true;break;}
+    }
+    if(!earFound)break;
+  }
+  if(idx.length===3)tris.push(idx[0],idx[1],idx[2]);
+  return tris;
+}
+
+function extrudeBuilding(bldg,w,h,scaleXY,scaleZ,sampleZ,sw,ne,lonRange,latRange,extraPos,extraTris,vOffset){
   const{coords,height}=bldg;
-  const pts=coords.slice(0,-1);if(pts.length<3)return;
+  const pts=coords.slice(0,-1); // drop closing duplicate
+  if(pts.length<3)return;
+
+  // Clip: skip building if its centroid is outside the selection shape
+  const cLon=pts.reduce((s,p)=>s+p.lon,0)/pts.length;
+  const cLat=pts.reduce((s,p)=>s+p.lat,0)/pts.length;
+  if(!pointInShape(cLat,cLon))return;
+
   const hNorm=height*scaleZ;
   const n=pts.length;
-  const bottom=[],top=[];
-  for(const{lon,lat}of pts){
-    const nx=(lon-sw.lng)/lonRange*100;
-    const ny=(ne.lat-lat)/latRange*100;
-    const bz=sampleZ(lon,lat);
-    bottom.push(nx,ny,bz);
-    top.push(nx,ny,bz+hNorm);
+
+  // Convert to normalized XY space.
+  // Terrain uses: x = col*scaleXY, y = (h-1-row)*scaleXY
+  // So lat→y: y = (ne.lat - lat) / latRange * (h-1) gives row,
+  // then (h-1-row)*scaleXY = (h-1 - (ne.lat-lat)/latRange*(h-1))*scaleXY
+  //                        = (lat-sw.lat)/latRange*(h-1)*scaleXY
+  // That matches terrain Y exactly.
+  const toNX=(lon)=>(lon-sw.lng)/lonRange*(w-1)*scaleXY;
+  const toNY=(lat)=>(lat-sw.lat)/latRange*(h-1)*scaleXY;
+
+  const pts2d=pts.map(({lon,lat})=>({x:toNX(lon),y:toNY(lat)}));
+
+  // Sample terrain elevation at each vertex
+  const basez=pts.map(({lon,lat})=>sampleZ(lon,lat));
+
+  const b0=vOffset;
+  // Bottom ring (on terrain)
+  for(let i=0;i<n;i++) extraPos.push(pts2d[i].x, pts2d[i].y, basez[i]);
+  const t0=vOffset+n;
+  // Top ring
+  for(let i=0;i<n;i++) extraPos.push(pts2d[i].x, pts2d[i].y, basez[i]+hNorm);
+
+  // Top face via ear-clipping (exact polygon shape)
+  const topTris=earClip(pts2d);
+  for(let i=0;i<topTris.length;i+=3){
+    extraTris.push(t0+topTris[i], t0+topTris[i+1], t0+topTris[i+2]);
   }
-  const b0=vOffset,t0=vOffset+n;
-  for(let i=0;i<n;i++)extraPos.push(bottom[i*3],bottom[i*3+1],bottom[i*3+2]);
-  for(let i=0;i<n;i++)extraPos.push(top[i*3],top[i*3+1],top[i*3+2]);
-  // Top centroid
-  let cx=0,cy=0,cz=0;
-  for(let i=0;i<n;i++){cx+=top[i*3];cy+=top[i*3+1];cz+=top[i*3+2];}
-  cx/=n;cy/=n;cz/=n;
-  const ci=vOffset+2*n;extraPos.push(cx,cy,cz);
-  for(let i=0;i<n;i++)extraTris.push(t0+i,ci,t0+(i+1)%n);
-  // Bottom centroid
-  let bcx=0,bcy=0,bcz=0;
-  for(let i=0;i<n;i++){bcx+=bottom[i*3];bcy+=bottom[i*3+1];bcz+=bottom[i*3+2];}
-  bcx/=n;bcy/=n;bcz/=n;
-  const bci=vOffset+2*n+1;extraPos.push(bcx,bcy,bcz);
-  for(let i=0;i<n;i++)extraTris.push(b0+(i+1)%n,bci,b0+i);
-  // Walls
+  // Bottom face (reversed winding)
+  for(let i=0;i<topTris.length;i+=3){
+    extraTris.push(b0+topTris[i+2], b0+topTris[i+1], b0+topTris[i]);
+  }
+  // Side walls
   for(let i=0;i<n;i++){
     const j=(i+1)%n;
-    extraTris.push(b0+i,t0+i,b0+j);
-    extraTris.push(t0+i,t0+j,b0+j);
+    extraTris.push(b0+i, t0+i, b0+j);
+    extraTris.push(t0+i, t0+j, b0+j);
   }
 }
 
@@ -933,27 +945,41 @@ function showPreview(elevs,w,h,exag,base,bounds,osmData){
 
   // Building preview boxes
   if(osmData&&osmData.buildings){
-    const bMat=new THREE.MeshPhongMaterial({color:0xbbbbbb,shininess:20});
+    const bMat=new THREE.MeshPhongMaterial({color:0xbbbbbb,shininess:20,side:THREE.DoubleSide});
+    const toNX=(lon)=>(lon-sw.lng)/lonRange*(w-1)*scaleXY-(cols/2)*scaleXY;
+    const toNY=(lat)=>(lat-sw.lat)/latRange*(h-1)*scaleXY-(rows/2)*scaleXY;
     for(const bldg of osmData.buildings.slice(0,600)){
       try{
         const pts=bldg.coords.slice(0,-1);if(pts.length<3)continue;
+        const cLon=pts.reduce((s,p)=>s+p.lon,0)/pts.length;
+        const cLat=pts.reduce((s,p)=>s+p.lat,0)/pts.length;
+        if(!pointInShape(cLat,cLon))continue;
         const hNorm=bldg.height*scaleZ;
-        let mlon=Infinity,Mlon=-Infinity,mlat=Infinity,Mlat=-Infinity;
-        for(const p of pts){mlon=Math.min(mlon,p.lon);Mlon=Math.max(Mlon,p.lon);mlat=Math.min(mlat,p.lat);Mlat=Math.max(Mlat,p.lat);}
-        const clon=(mlon+Mlon)/2,clat=(mlat+Mlat)/2;
-        const bx=(clon-sw.lng)/lonRange*100-(cols/2)*scaleXY;
-        const bz=(ne.lat-clat)/latRange*100-(rows/2)*scaleXY;
-        const bw=Math.max(0.3,(Mlon-mlon)/lonRange*100);
-        const bd=Math.max(0.3,(Mlat-mlat)/latRange*100);
-        // Sample terrain height at building center
-        const gx=Math.max(0,Math.min(w-1,Math.round((clon-sw.lng)/lonRange*(w-1))));
-        const gy=Math.max(0,Math.min(h-1,Math.round((ne.lat-clat)/latRange*(h-1))));
+        const gx=Math.max(0,Math.min(w-1,Math.round((cLon-sw.lng)/lonRange*(w-1))));
+        const gy=Math.max(0,Math.min(h-1,Math.round((ne.lat-cLat)/latRange*(h-1))));
         const ev=elevs[gy*w+gx];
         const bBaseZ=(ev>-9000&&isFinite(ev)?(ev-minH)*scaleZ+base:base)-15;
-        const bGeo=new THREE.BoxGeometry(bw,hNorm,bd);
-        const bMesh=new THREE.Mesh(bGeo,bMat);
-        bMesh.position.set(bx,bBaseZ+hNorm/2,bz);
-        group.add(bMesh);
+        // Build actual polygon footprint extruded shape using earClip
+        const pts2d=pts.map(p=>({x:toNX(p.lon),y:toNY(p.lat)}));
+        const topTris=earClip(pts2d);
+        if(!topTris.length)continue;
+        const positions=[];
+        // bottom ring
+        for(const p of pts2d)positions.push(p.x,bBaseZ,p.y);
+        // top ring
+        for(const p of pts2d)positions.push(p.x,bBaseZ+hNorm,p.y);
+        const n2=pts2d.length,indices=[];
+        // top face
+        for(let i=0;i<topTris.length;i+=3)indices.push(n2+topTris[i],n2+topTris[i+1],n2+topTris[i+2]);
+        // bottom face reversed
+        for(let i=0;i<topTris.length;i+=3)indices.push(topTris[i+2],topTris[i+1],topTris[i]);
+        // walls
+        for(let i=0;i<n2;i++){const j=(i+1)%n2;indices.push(i,n2+i,j,n2+i,n2+j,j);}
+        const geo=new THREE.BufferGeometry();
+        geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(positions),3));
+        geo.setIndex(indices);
+        geo.computeVertexNormals();
+        group.add(new THREE.Mesh(geo,bMat));
       }catch(e){continue;}
     }
   }
