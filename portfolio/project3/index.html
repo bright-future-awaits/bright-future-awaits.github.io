@@ -21,21 +21,22 @@ header{padding:1rem 2rem;border-bottom:1px solid var(--border);display:flex;alig
 .tagline{font-size:0.7rem;color:var(--muted);font-family:var(--mono)}
 .workspace{display:grid;grid-template-columns:1fr 1fr 300px;flex:1;min-height:0;overflow:hidden}
 .pane{position:relative;border-right:1px solid var(--border)}
-.pane-label{position:absolute;top:10px;left:12px;z-index:999;font-family:var(--mono);font-size:0.6rem;color:var(--muted);background:rgba(10,10,10,0.85);padding:3px 8px;border-radius:3px;border:1px solid var(--border);letter-spacing:0.06em}
+.pane-label{position:absolute;top:10px;left:12px;z-index:999;font-family:var(--mono);font-size:0.6rem;color:var(--muted);background:rgba(10,10,10,0.85);padding:3px 8px;border-radius:3px;border:1px solid var(--border);letter-spacing:0.06em;pointer-events:none}
 #map{width:100%;height:100%}
-.map-style-bar{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:999;display:flex;gap:4px;background:rgba(10,10,10,0.9);padding:5px;border-radius:5px;border:1px solid var(--border)}
-.ms-btn{font-family:var(--mono);font-size:0.58rem;padding:4px 8px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all 0.15s;white-space:nowrap}
-.ms-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
-.ms-btn:hover:not(.active){color:var(--text);border-color:#555}
-.addr-bar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:999;display:flex;gap:6px;background:rgba(10,10,10,0.92);padding:6px;border-radius:5px;border:1px solid var(--border);width:340px}
+.map-top-bar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:999;display:flex;gap:6px;background:rgba(10,10,10,0.92);padding:6px;border-radius:5px;border:1px solid var(--border);width:340px}
 .addr-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:var(--mono);font-size:0.68rem;padding:5px 8px;outline:none}
 .addr-input:focus{border-color:var(--accent)}
 .addr-input::placeholder{color:var(--muted)}
 .addr-btn{background:var(--accent);color:#000;border:none;border-radius:3px;font-family:var(--mono);font-size:0.65rem;font-weight:700;padding:5px 10px;cursor:pointer;white-space:nowrap}
 .addr-btn:hover{background:#d4ff1a}
+.map-style-bar{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:999;display:flex;gap:4px;background:rgba(10,10,10,0.92);padding:5px;border-radius:5px;border:1px solid var(--border)}
+.ms-btn{font-family:var(--mono);font-size:0.58rem;padding:4px 8px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.ms-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
+.ms-btn:hover:not(.active){color:var(--text);border-color:#555}
 #preview-pane{background:#0d0d0d;display:flex;align-items:center;justify-content:center}
-#preview-canvas{width:100%;height:100%;display:block}
-.preview-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:0.6rem;color:var(--muted);background:rgba(10,10,10,0.85);padding:3px 10px;border-radius:3px;border:1px solid var(--border);white-space:nowrap}
+#preview-canvas{width:100%;height:100%;display:block;cursor:grab}
+#preview-canvas:active{cursor:grabbing}
+.preview-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:0.6rem;color:var(--muted);background:rgba(10,10,10,0.85);padding:3px 10px;border-radius:3px;border:1px solid var(--border);white-space:nowrap;pointer-events:none}
 .empty-preview{text-align:center;color:var(--muted);font-family:var(--mono);font-size:0.7rem;line-height:2;pointer-events:none;position:absolute}
 .empty-preview .icon{font-size:2rem;opacity:0.3;display:block;margin-bottom:0.5rem}
 .panel{background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
@@ -45,13 +46,21 @@ header{padding:1rem 2rem;border-bottom:1px solid var(--border);display:flex;alig
 .stat{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:0.5rem 0.6rem}
 .stat-val{font-family:var(--mono);font-size:0.9rem;font-weight:700;color:var(--accent)}
 .stat-label{font-size:0.6rem;color:var(--muted);margin-top:1px}
-.pills{display:flex;gap:0.4rem}
+.pills{display:flex;gap:0.4rem;flex-wrap:wrap}
 .pill{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:0.3rem 0.6rem;font-family:var(--mono);font-size:0.68rem;cursor:pointer;transition:all 0.15s;color:var(--text)}
 .pill.active{background:var(--accent);color:#000;border-color:var(--accent)}
 .pill:hover:not(.active){border-color:var(--accent);color:var(--accent)}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-top:0.5rem}
+.toggle-label{font-size:0.72rem;color:var(--text)}
+.toggle{position:relative;width:36px;height:20px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--surface2);border:1px solid var(--border);border-radius:20px;cursor:pointer;transition:0.2s}
+.toggle-slider:before{content:'';position:absolute;width:14px;height:14px;left:2px;top:2px;background:var(--muted);border-radius:50%;transition:0.2s}
+.toggle input:checked + .toggle-slider{background:var(--accent);border-color:var(--accent)}
+.toggle input:checked + .toggle-slider:before{background:#000;transform:translateX(16px)}
 .slider-row{display:flex;align-items:center;gap:0.75rem;margin-top:0.35rem}
 input[type=range]{flex:1;accent-color:var(--accent)}
-.slider-val{font-family:var(--mono);font-size:0.72rem;color:var(--accent);min-width:30px;text-align:right}
+.slider-val{font-family:var(--mono);font-size:0.72rem;color:var(--accent);min-width:36px;text-align:right}
 .hint{font-size:0.62rem;color:var(--muted);margin-top:0.3rem}
 .gen-btn{width:100%;padding:0.8rem;background:var(--accent);color:#000;border:none;border-radius:5px;font-family:var(--mono);font-size:0.8rem;font-weight:700;cursor:pointer;transition:all 0.15s}
 .gen-btn:hover{background:#d4ff1a;transform:translateY(-1px)}
@@ -60,7 +69,7 @@ input[type=range]{flex:1;accent-color:var(--accent)}
 .dl-row{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:0.5rem}
 .dl-btn{padding:0.65rem;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:5px;font-family:var(--mono);font-size:0.72rem;font-weight:700;cursor:pointer;transition:all 0.15s;display:none}
 .dl-btn:hover{background:var(--accent);color:#000}
-.gmaps-btn{width:100%;padding:0.6rem;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:5px;font-family:var(--mono);font-size:0.68rem;cursor:pointer;transition:all 0.15s;display:none;margin-top:0.5rem;text-align:center;text-decoration:none}
+.gmaps-btn{width:100%;padding:0.55rem;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:5px;font-family:var(--mono);font-size:0.65rem;cursor:pointer;transition:all 0.15s;display:none;margin-top:0.5rem;text-align:center;text-decoration:none}
 .gmaps-btn:hover{border-color:#555;color:var(--text)}
 .log{flex:1;overflow-y:auto;padding:0.6rem 1rem;font-family:var(--mono);font-size:0.62rem;line-height:1.9;color:var(--muted)}
 .log-line.ok{color:var(--accent)}
@@ -76,7 +85,7 @@ input[type=range]{flex:1;accent-color:var(--accent)}
 <header>
   <div>
     <div class="logo">TERRAIN<span>FORGE</span></div>
-    <div class="tagline">USGS 3DEP · US terrain → STL / OBJ</div>
+    <div class="tagline">USGS 3DEP + OpenStreetMap · US terrain → STL / OBJ</div>
   </div>
 </header>
 <div class="workspace">
@@ -84,7 +93,7 @@ input[type=range]{flex:1;accent-color:var(--accent)}
   <div class="pane">
     <div class="pane-label">01 — SELECT AREA</div>
     <div id="map"></div>
-    <div class="addr-bar">
+    <div class="map-top-bar">
       <input class="addr-input" id="addr-input" placeholder="Search address or place..." onkeydown="if(event.key==='Enter')geocode()"/>
       <button class="addr-btn" onclick="geocode()">Go</button>
     </div>
@@ -118,6 +127,7 @@ input[type=range]{flex:1;accent-color:var(--accent)}
         </div>
       </div>
     </div>
+
     <div class="ps">
       <div class="label">Resolution</div>
       <div class="pills">
@@ -127,21 +137,37 @@ input[type=range]{flex:1;accent-color:var(--accent)}
       </div>
       <div class="hint" id="res-hint">1m lidar — auto-falls back to 10m if unavailable</div>
     </div>
+
+    <div class="ps">
+      <div class="label">Layers</div>
+      <div class="toggle-row">
+        <span class="toggle-label">Buildings (OSM)</span>
+        <label class="toggle"><input type="checkbox" id="tog-buildings" checked><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row" style="margin-top:0.4rem">
+        <span class="toggle-label">Roads (OSM)</span>
+        <label class="toggle"><input type="checkbox" id="tog-roads"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row" style="margin-top:0.4rem">
+        <span class="toggle-label">Water (OSM)</span>
+        <label class="toggle"><input type="checkbox" id="tog-water"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="hint" style="margin-top:0.5rem">OSM data quality varies. Best in dense US cities.</div>
+    </div>
+
     <div class="ps">
       <div class="label">Vertical exaggeration</div>
       <div class="slider-row">
         <input type="range" id="exag" min="1" max="10" value="2" step="0.5" oninput="document.getElementById('exag-val').textContent=this.value+'×'">
         <span class="slider-val" id="exag-val">2×</span>
       </div>
-      <div class="hint">2–4× recommended for printing</div>
-    </div>
-    <div class="ps">
-      <div class="label">Base thickness</div>
+      <div class="label" style="margin-top:0.75rem">Base thickness</div>
       <div class="slider-row">
         <input type="range" id="base" min="1" max="10" value="3" step="1" oninput="document.getElementById('base-val').textContent=this.value+'mm'">
         <span class="slider-val" id="base-val">3mm</span>
       </div>
     </div>
+
     <div class="ps">
       <button class="gen-btn" id="gen-btn" onclick="generate()" disabled>Select an area first</button>
       <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
@@ -151,10 +177,11 @@ input[type=range]{flex:1;accent-color:var(--accent)}
       </div>
       <a class="gmaps-btn" id="gmaps-btn" target="_blank">↗ Open in Google Maps</a>
     </div>
+
     <div style="padding:0.5rem 1.25rem 0.3rem;border-bottom:1px solid var(--border);flex-shrink:0">
       <div class="label" style="margin:0">Log</div>
     </div>
-    <div class="log" id="log"><div class="log-line info">> ready. select an area.</div></div>
+    <div class="log" id="log"><div class="log-line info">> ready. select an area to begin.</div></div>
   </div>
 </div>
 
@@ -162,12 +189,19 @@ input[type=range]{flex:1;accent-color:var(--accent)}
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+// ─────────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────────
 let map, drawLayer, tileLayer, currentBounds=null, currentShape=null;
 let stlBuffer=null, objString=null, selectedRes=1;
-let renderer, scene, camera, isDragging=false, prevMouse={x:0,y:0}, rotX=0.4, rotY=0.4, camDist=180;
+let renderer, scene, camera;
+let isDragging=false, prevMouse={x:0,y:0};
+let rotX=0.5, rotY=0.4, camDist=180;
 let terrainMesh=null;
 
-// ── MAP ───────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// MAP
+// ─────────────────────────────────────────────────────────────────
 const MAP_STYLES={
   topo:     {url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',max:17,attr:'© OSM © OpenTopoMap'},
   satellite:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',max:19,attr:'© Esri'},
@@ -177,6 +211,7 @@ const MAP_STYLES={
 };
 map=L.map('map',{zoomControl:true}).setView([36.1,-112.1],10);
 tileLayer=L.tileLayer(MAP_STYLES.topo.url,{attribution:MAP_STYLES.topo.attr,maxZoom:MAP_STYLES.topo.max}).addTo(map);
+
 function setMapStyle(key,btn){
   document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -185,58 +220,50 @@ function setMapStyle(key,btn){
   tileLayer=L.tileLayer(s.url,{attribution:s.attr,maxZoom:s.max}).addTo(map);
 }
 
-// ── DRAW TOOLS ────────────────────────────────────────────────────
 drawLayer=new L.FeatureGroup();
 map.addLayer(drawLayer);
 const shapeStyle={color:'#ff3300',fillOpacity:0.15,weight:2.5};
 map.addControl(new L.Control.Draw({
   draw:{
     rectangle:{shapeOptions:shapeStyle},
-    polygon:{shapeOptions:shapeStyle,allowIntersection:false},
+    polygon:{shapeOptions:shapeStyle,allowIntersection:false,showArea:false},
     circle:{shapeOptions:shapeStyle},
     polyline:false,circlemarker:false,marker:false
   },
   edit:{featureGroup:drawLayer}
 }));
-
-function onShapeCreated(e){
-  drawLayer.clearLayers();
-  drawLayer.addLayer(e.layer);
-  currentShape=e.layer;
-  currentBounds=e.layer.getBounds();
-  updateStats();
-}
-map.on(L.Draw.Event.CREATED, onShapeCreated);
+map.on(L.Draw.Event.CREATED,e=>{
+  drawLayer.clearLayers();drawLayer.addLayer(e.layer);
+  currentShape=e.layer;currentBounds=e.layer.getBounds();updateStats();
+});
 map.on(L.Draw.Event.DELETED,()=>{currentBounds=null;currentShape=null;showNoSel()});
 map.on(L.Draw.Event.EDITED,e=>{
-  e.layers.eachLayer(l=>{currentShape=l;currentBounds=l.getBounds();});
-  updateStats();
+  e.layers.eachLayer(l=>{currentShape=l;currentBounds=l.getBounds();});updateStats();
 });
 
-// ── GEOCODER (Nominatim, no key) ──────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// GEOCODER
+// ─────────────────────────────────────────────────────────────────
 async function geocode(){
   const q=document.getElementById('addr-input').value.trim();
   if(!q)return;
   log(`searching "${q}"...`);
   try{
-    const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=us`;
-    const res=await fetch(url,{headers:{'Accept-Language':'en'}});
-    if(!res.ok)throw new Error(`Nominatim returned HTTP ${res.status}`);
-    const data=await res.json();
-    if(!data.length){log(`no results found for "${q}"`, 'warn');return;}
-    const {lat,lon,display_name}=data[0];
-    map.setView([parseFloat(lat),parseFloat(lon)],14);
-    log(`found: ${display_name.split(',').slice(0,2).join(',')}`, 'ok');
-  } catch(e){
-    if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')){
-      log('geocoder: network error — check internet connection','err');
-    } else {
-      log(`geocoder error: ${e.message}`,'err');
-    }
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=us`,{headers:{'Accept-Language':'en'}});
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);
+    const d=await r.json();
+    if(!d.length){log(`no results for "${q}"`,'warn');return;}
+    map.setView([parseFloat(d[0].lat),parseFloat(d[0].lon)],14);
+    log(`found: ${d[0].display_name.split(',').slice(0,2).join(',')}`, 'ok');
+  }catch(e){
+    if(e.message.includes('Failed to fetch'))log('geocoder: network error','err');
+    else log(`geocoder: ${e.message}`,'err');
   }
 }
 
-// ── THREE.JS ──────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// THREE.JS — fixed rotation
+// ─────────────────────────────────────────────────────────────────
 const canvas=document.getElementById('preview-canvas');
 renderer=new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setClearColor(0x0d0d0d,1);
@@ -245,6 +272,7 @@ camera=new THREE.PerspectiveCamera(45,2,0.1,5000);
 scene.add(new THREE.AmbientLight(0xffffff,0.4));
 const dl=new THREE.DirectionalLight(0xc8ff00,0.8);dl.position.set(1,2,1);scene.add(dl);
 const dl2=new THREE.DirectionalLight(0xffffff,0.3);dl2.position.set(-1,1,-1);scene.add(dl2);
+
 function resizeRenderer(){
   const p=document.getElementById('preview-pane');
   renderer.setSize(p.clientWidth,p.clientHeight,false);
@@ -252,28 +280,42 @@ function resizeRenderer(){
 }
 resizeRenderer();
 window.addEventListener('resize',resizeRenderer);
+
 canvas.addEventListener('mousedown',e=>{isDragging=true;prevMouse={x:e.clientX,y:e.clientY}});
-canvas.addEventListener('mouseup',()=>isDragging=false);
-canvas.addEventListener('mouseleave',()=>isDragging=false);
+window.addEventListener('mouseup',()=>isDragging=false);
 canvas.addEventListener('mousemove',e=>{
   if(!isDragging)return;
-  // FIX: invert X delta so dragging right rotates right
-  rotY-=(e.clientX-prevMouse.x)*0.008;
-  rotX+=(e.clientY-prevMouse.y)*0.008;
-  rotX=Math.max(-Math.PI/2,Math.min(Math.PI/2,rotX));
+  const dx=e.clientX-prevMouse.x;
+  const dy=e.clientY-prevMouse.y;
+  // drag RIGHT → scene rotates right (camera moves left around it) → rotY decreases
+  rotY-=dx*0.008;
+  // drag DOWN → camera tilts down → rotX increases
+  rotX+=dy*0.008;
+  rotX=Math.max(-Math.PI/2+0.01,Math.min(Math.PI/2-0.01,rotX));
   prevMouse={x:e.clientX,y:e.clientY};
 });
-canvas.addEventListener('wheel',e=>{camDist=Math.max(30,Math.min(600,camDist+e.deltaY*0.3));e.preventDefault();},{passive:false});
+canvas.addEventListener('wheel',e=>{
+  camDist=Math.max(20,Math.min(800,camDist+e.deltaY*0.4));
+  e.preventDefault();
+},{passive:false});
+
 (function animate(){
   requestAnimationFrame(animate);
   if(terrainMesh){
-    camera.position.set(Math.sin(rotY)*Math.cos(rotX)*camDist,Math.sin(rotX)*camDist,Math.cos(rotY)*Math.cos(rotX)*camDist);
+    // Standard spherical coordinates: rotY=azimuth, rotX=elevation
+    camera.position.set(
+      terrainMesh.position.x + Math.sin(rotY)*Math.cos(rotX)*camDist,
+      terrainMesh.position.y + Math.sin(rotX)*camDist,
+      terrainMesh.position.z + Math.cos(rotY)*Math.cos(rotX)*camDist
+    );
     camera.lookAt(terrainMesh.position);
   }
   renderer.render(scene,camera);
 })();
 
-// ── HELPERS ───────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────
 function arrayMin(a){let m=Infinity;for(let i=0;i<a.length;i++){const v=a[i];if(v>-9000&&isFinite(v)&&v<m)m=v;}return m;}
 function arrayMax(a){let m=-Infinity;for(let i=0;i<a.length;i++){const v=a[i];if(v>-9000&&isFinite(v)&&v>m)m=v;}return m;}
 function haverDist(lat1,lon1,lat2,lon2){
@@ -288,7 +330,7 @@ function log(msg,type='info'){
 }
 function setProgress(p){document.getElementById('prog').style.width=p+'%'}
 
-// Alignment-safe Float32 read — USGS tile offsets are not always 4-byte aligned
+// Alignment-safe Float32 read — USGS tile offsets not always 4-byte aligned
 function readF32(buf,byteOffset,count){
   if(byteOffset%4===0)return new Float32Array(buf,byteOffset,count);
   const tmp=new ArrayBuffer(count*4);
@@ -296,22 +338,16 @@ function readF32(buf,byteOffset,count){
   return new Float32Array(tmp);
 }
 
-// Is a lat/lng point inside the current shape?
-// For circles, use Leaflet's contains. For polygons, use ray casting. For rectangles, use bounds.
 function pointInShape(lat,lng){
   if(!currentShape)return true;
   if(currentShape instanceof L.Circle){
-    const center=currentShape.getLatLng(),r=currentShape.getRadius();
-    const d=map.distance([lat,lng],[center.lat,center.lng]);
-    return d<=r;
+    return map.distance([lat,lng],[currentShape.getLatLng().lat,currentShape.getLatLng().lng])<=currentShape.getRadius();
   }
   if(currentShape instanceof L.Polygon||currentShape instanceof L.Rectangle){
-    // Ray casting in lat/lng space
-    const latlngs=currentShape.getLatLngs()[0];
+    const ll=currentShape.getLatLngs()[0];
     let inside=false;
-    for(let i=0,j=latlngs.length-1;i<latlngs.length;j=i++){
-      const xi=latlngs[i].lng,yi=latlngs[i].lat;
-      const xj=latlngs[j].lng,yj=latlngs[j].lat;
+    for(let i=0,j=ll.length-1;i<ll.length;j=i++){
+      const xi=ll[i].lng,yi=ll[i].lat,xj=ll[j].lng,yj=ll[j].lat;
       if(((yi>lat)!==(yj>lat))&&(lng<(xj-xi)*(lat-yi)/(yj-yi)+xi))inside=!inside;
     }
     return inside;
@@ -328,8 +364,7 @@ function updateStats(){
   document.getElementById('stat-pts').textContent=px+'×'+py;
   document.getElementById('no-sel').style.display='none';
   document.getElementById('sel-stats').style.display='block';
-  const btn=document.getElementById('gen-btn');
-  btn.disabled=false;btn.textContent='Generate';
+  const btn=document.getElementById('gen-btn');btn.disabled=false;btn.textContent='Generate';
   document.getElementById('dl-stl').style.display='none';
   document.getElementById('dl-obj').style.display='none';
   document.getElementById('gmaps-btn').style.display='none';
@@ -349,198 +384,394 @@ function setRes(el){
   if(currentBounds)updateStats();
 }
 
-function updateGmapsLink(){
-  if(!currentBounds)return;
-  const c=currentBounds.getCenter();
-  const sw=currentBounds.getSouthWest(),ne=currentBounds.getNorthEast();
-  const btn=document.getElementById('gmaps-btn');
-  btn.href=`https://www.google.com/maps/@${c.lat.toFixed(6)},${c.lng.toFixed(6)},14z`;
-  btn.style.display='block';
-}
-
-// ── FETCH ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// FETCH ELEVATION
+// ─────────────────────────────────────────────────────────────────
 async function fetchElevation(bounds,res){
   const sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
   const pxW=Math.min(Math.round((ne.lng-sw.lng)*111000/res),512);
   const pxH=Math.min(Math.round((ne.lat-sw.lat)*111000/res),512);
   const bbox=`${sw.lng},${sw.lat},${ne.lng},${ne.lat}`;
-  const metaUrl=`https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage`+
+  const url=`https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage`+
     `?bbox=${bbox}&bboxSR=4326&size=${pxW},${pxH}&imageSR=4326`+
     `&format=tiff&pixelType=F32&noDataInterpretation=esriNoDataMatchAny`+
     `&interpolation=+RSP_BilinearInterpolation&f=json`;
   log(`requesting ${pxW}×${pxH} elevation grid at ${res}m...`);
-
   let meta;
   try{
-    const resp=await fetch(metaUrl);
-    if(!resp.ok)throw new Error(`USGS metadata request failed: HTTP ${resp.status} ${resp.statusText}`);
-    meta=await resp.json();
-  } catch(e){
-    if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')){
-      throw new Error('Cannot reach USGS (elevation.nationalmap.gov). Check your internet connection or try again — USGS may be temporarily down.');
-    }
+    const r=await fetch(url);
+    if(!r.ok)throw new Error(`HTTP ${r.status} ${r.statusText}`);
+    meta=await r.json();
+  }catch(e){
+    if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError'))
+      throw new Error('Cannot reach USGS (elevation.nationalmap.gov) — check internet connection.');
     throw new Error(`USGS metadata error: ${e.message}`);
   }
-
   if(!meta.href){
-    const detail=meta.error?meta.error.message:'no image URL in response';
-    throw new Error(`USGS declined to serve elevation data: ${detail}. Try a smaller or different area.`);
+    const detail=meta.error?meta.error.message:'no image URL returned';
+    throw new Error(`USGS declined to serve data: ${detail}. Try a smaller or different area.`);
   }
-
-  log(`downloading geotiff from USGS...`);
+  log('downloading geotiff...');
   let buf;
   try{
-    const resp=await fetch(meta.href);
-    if(!resp.ok)throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
-    buf=await resp.arrayBuffer();
-  } catch(e){
-    if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')){
-      throw new Error('Downloaded URL unreachable — possible CORS block or USGS CDN issue. This often resolves itself; try again in a moment.');
-    }
-    throw new Error(`GeoTIFF download failed: ${e.message}`);
+    const r=await fetch(meta.href);
+    if(!r.ok)throw new Error(`HTTP ${r.status} ${r.statusText}`);
+    buf=await r.arrayBuffer();
+  }catch(e){
+    if(e.message.includes('Failed to fetch'))
+      throw new Error('GeoTIFF download failed — possible CORS issue. Try again or use a different area.');
+    throw new Error(`GeoTIFF download: ${e.message}`);
   }
-
-  if(buf.byteLength<200){
-    throw new Error(`USGS returned only ${buf.byteLength} bytes — likely an error page, not a TIFF. Try a different area or resolution.`);
-  }
-
+  if(buf.byteLength<500)throw new Error(`USGS returned only ${buf.byteLength} bytes — likely an error response, not a TIFF.`);
   log(`${(buf.byteLength/1024).toFixed(0)}kb received`,'ok');
   return {buf,width:pxW,height:pxH};
 }
 
-// ── PARSE TIFF ────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// PARSE TIFF (stripped + tiled, alignment-safe)
+// ─────────────────────────────────────────────────────────────────
 function parseTiff(buf,fallbackW,fallbackH){
   const view=new DataView(buf);
   const magic=view.getUint16(0,false);
   const le=(magic===0x4949);
   if(magic!==0x4949&&magic!==0x4D4D){
-    // Might be an HTML error page from USGS
-    const text=new TextDecoder().decode(new Uint8Array(buf,0,Math.min(200,buf.byteLength)));
-    if(text.includes('<html')||text.includes('error')||text.includes('Error')){
-      throw new Error('USGS returned an error page instead of elevation data. The requested area may be outside 3DEP coverage.');
-    }
-    throw new Error('Response is not a valid TIFF file');
+    const txt=new TextDecoder().decode(new Uint8Array(buf,0,Math.min(200,buf.byteLength)));
+    if(txt.includes('<')||txt.toLowerCase().includes('error'))
+      throw new Error('USGS returned an HTML error page instead of elevation data. Area may be outside coverage.');
+    throw new Error('Response is not a valid TIFF file.');
   }
-
   let off=view.getUint32(4,le);
   const cnt=view.getUint16(off,le);off+=2;
-  let imgW=fallbackW,imgH=fallbackH;
-  let stripOffsets=[],stripCounts=[];
-  let tileOffsets=[],tileCounts=[],tileW=0,tileH=0;
-  let bitsPerSample=32,compression=1;
-
+  let imgW=fallbackW,imgH=fallbackH,bitsPerSample=32,compression=1;
+  let stripOffsets=[],stripCounts=[],tileOffsets=[],tileCounts=[],tileW=0,tileH=0;
   for(let i=0;i<cnt;i++){
     const tag=view.getUint16(off,le),type=view.getUint16(off+2,le),n=view.getUint32(off+4,le),vo=off+8;
     const rv=()=>type===3?view.getUint16(vo,le):view.getUint32(vo,le);
-    const ra=()=>{
-      if(n===1)return[rv()];
-      const ao=view.getUint32(vo,le),arr=[];
-      for(let j=0;j<n;j++)arr.push(type===3?view.getUint16(ao+j*2,le):view.getUint32(ao+j*4,le));
-      return arr;
-    };
-    if(tag===256)imgW=rv();
-    else if(tag===257)imgH=rv();
-    else if(tag===258)bitsPerSample=rv();
-    else if(tag===259)compression=rv();
-    else if(tag===273)stripOffsets=ra();
-    else if(tag===279)stripCounts=ra();
-    else if(tag===322)tileW=rv();
-    else if(tag===323)tileH=rv();
-    else if(tag===324)tileOffsets=ra();
-    else if(tag===325)tileCounts=ra();
+    const ra=()=>{if(n===1)return[rv()];const ao=view.getUint32(vo,le),ar=[];for(let j=0;j<n;j++)ar.push(type===3?view.getUint16(ao+j*2,le):view.getUint32(ao+j*4,le));return ar;};
+    if(tag===256)imgW=rv();else if(tag===257)imgH=rv();
+    else if(tag===258)bitsPerSample=rv();else if(tag===259)compression=rv();
+    else if(tag===273)stripOffsets=ra();else if(tag===279)stripCounts=ra();
+    else if(tag===322)tileW=rv();else if(tag===323)tileH=rv();
+    else if(tag===324)tileOffsets=ra();else if(tag===325)tileCounts=ra();
     off+=12;
   }
-
-  if(compression!==1)throw new Error(`TIFF uses compression type ${compression} which is not supported. Try requesting a smaller area.`);
-
+  if(compression!==1)throw new Error(`TIFF uses compression type ${compression} — not supported. Try a smaller area.`);
   const bps=bitsPerSample/8;
   const elevs=new Float32Array(imgW*imgH);
-
   if(tileOffsets.length>0&&tileW>0&&tileH>0){
     log(`tiled tiff ${imgW}×${imgH}, tile ${tileW}×${tileH}`);
     const across=Math.ceil(imgW/tileW),down=Math.ceil(imgH/tileH);
-    for(let ty=0;ty<down;ty++) for(let tx=0;tx<across;tx++){
-      const ti=ty*across+tx;
-      if(ti>=tileOffsets.length)continue;
+    for(let ty=0;ty<down;ty++)for(let tx=0;tx<across;tx++){
+      const ti=ty*across+tx;if(ti>=tileOffsets.length)continue;
       const data=readF32(buf,tileOffsets[ti],tileCounts[ti]/bps);
-      const xStart=tx*tileW,yStart=ty*tileH;
-      for(let py=0;py<tileH;py++) for(let px=0;px<tileW;px++){
-        const ix=xStart+px,iy=yStart+py;
+      const xs=tx*tileW,ys=ty*tileH;
+      for(let py=0;py<tileH;py++)for(let px=0;px<tileW;px++){
+        const ix=xs+px,iy=ys+py;
         if(ix<imgW&&iy<imgH)elevs[iy*imgW+ix]=data[py*tileW+px];
       }
     }
-  } else if(stripOffsets.length>0){
-    log(`stripped tiff ${imgW}×${imgH}, ${stripOffsets.length} strip(s)`);
+  }else if(stripOffsets.length>0){
+    log(`stripped tiff ${imgW}×${imgH}`);
     let pi=0;
     for(let s=0;s<stripOffsets.length;s++){
       const data=readF32(buf,stripOffsets[s],stripCounts[s]/bps);
       for(let k=0;k<data.length;k++)elevs[pi++]=data[k];
     }
-  } else {
-    throw new Error('TIFF contains no strip or tile data — the file may be malformed or an unsupported TIFF variant.');
-  }
-
+  }else throw new Error('No strip or tile data found in TIFF.');
   const minV=arrayMin(elevs),maxV=arrayMax(elevs);
-  if(Math.abs(maxV-minV)<0.01)throw new Error(`Elevation range is only ${(maxV-minV).toFixed(3)}m — data appears flat. 1m lidar may not be available here; try switching to 10m.`);
+  if(Math.abs(maxV-minV)<0.01)throw new Error(`Elevation range is ~0m — data appears flat. 1m lidar may not cover this area; try 10m.`);
   log(`elevation ${minV.toFixed(0)}m – ${maxV.toFixed(0)}m (${(maxV-minV).toFixed(0)}m range)`,'ok');
   return {elevs,width:imgW,height:imgH};
 }
 
-// ── GEOMETRY ──────────────────────────────────────────────────────
-function buildGeometry(elevs,w,h,exag,baseThick,bounds){
+// ─────────────────────────────────────────────────────────────────
+// FETCH OSM DATA
+// ─────────────────────────────────────────────────────────────────
+async function fetchOSM(bounds,wantBuildings,wantRoads,wantWater){
+  const sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
+  const s=sw.lat,w=sw.lng,n=ne.lat,e=ne.lng;
+  const bbox=`${s},${w},${n},${e}`;
+
+  const parts=[];
+  if(wantBuildings){
+    parts.push(`way["building"](${bbox});`);
+    parts.push(`relation["building"]["type"="multipolygon"](${bbox});`);
+  }
+  if(wantRoads){
+    parts.push(`way["highway"~"^(motorway|trunk|primary|secondary|tertiary|residential|service)$"](${bbox});`);
+  }
+  if(wantWater){
+    parts.push(`way["natural"="water"](${bbox});`);
+    parts.push(`way["waterway"~"^(river|canal)$"](${bbox});`);
+  }
+  if(!parts.length)return null;
+
+  const query=`[out:json][timeout:30];\n(\n${parts.join('\n')}\n);\nout body;\n>;\nout skel qt;`;
+  const endpoints=[
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+  ];
+  let lastErr='';
+  for(const ep of endpoints){
+    try{
+      const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(query)});
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      const d=await r.json();
+      return parseOSM(d,wantBuildings,wantRoads,wantWater);
+    }catch(e){lastErr=e.message;continue;}
+  }
+  throw new Error(`Overpass API unreachable: ${lastErr}`);
+}
+
+function parseOSM(raw,wantBuildings,wantRoads,wantWater){
+  const nodes={};
+  for(const el of raw.elements||[])
+    if(el.type==='node')nodes[el.id]={lat:el.lat,lon:el.lon};
+
+  const buildings=[],roads=[],water=[];
+  for(const el of raw.elements||[]){
+    if(el.type!=='way')continue;
+    const tags=el.tags||{};
+    const coords=(el.nodes||[]).map(id=>nodes[id]).filter(Boolean);
+    if(coords.length<2)continue;
+    const closed=coords.length>=4&&coords[0].lat===coords[coords.length-1].lat&&coords[0].lon===coords[coords.length-1].lon;
+
+    if(wantBuildings&&tags.building&&closed){
+      buildings.push({coords,height:parseHeight(tags)});
+    }else if(wantRoads&&tags.highway){
+      roads.push({coords,width:roadWidth(tags.highway)});
+    }else if(wantWater&&(tags.natural==='water'||tags.waterway)&&closed){
+      water.push({coords});
+    }
+  }
+  return {buildings,roads,water};
+}
+
+function parseHeight(tags){
+  if(tags.height){const v=parseFloat(tags.height);if(!isNaN(v))return v;}
+  if(tags['building:levels']){const v=parseFloat(tags['building:levels']);if(!isNaN(v))return v*3.5;}
+  const def={house:7,residential:10,apartments:25,commercial:15,retail:6,
+    industrial:10,office:30,school:10,university:15,yes:10};
+  return def[tags.building]||10;
+}
+function roadWidth(hw){
+  return {motorway:0.00015,trunk:0.00012,primary:0.0001,secondary:0.00008,
+    tertiary:0.00006,residential:0.00005,service:0.00004}[hw]||0.00005;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// GEOMETRY — shared by STL + OBJ
+// ─────────────────────────────────────────────────────────────────
+function buildGeometry(elevs,w,h,exag,baseThick,bounds,osmData){
+  const sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
+  const lonRange=ne.lng-sw.lng,latRange=ne.lat-sw.lat;
   const scaleXY=100/Math.max(w,h);
   const minH=arrayMin(elevs),range=(arrayMax(elevs)-minH)||1;
   const scaleZ=(30/range)*exag;
-  const sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
-  const latRange=ne.lat-sw.lat,lngRange=ne.lng-sw.lng;
 
-  const getZ=(x,y)=>{
+  const getElev=(x,y)=>{
     const v=elevs[y*w+x];
-    const lat=ne.lat-(y/h)*latRange;
-    const lng=sw.lng+(x/w)*lngRange;
-    if(!pointInShape(lat,lng))return 0; // mask outside shape to base level
     return(v>-9000&&isFinite(v))?(v-minH)*scaleZ+baseThick:baseThick;
   };
+  const lonToX=(lon)=>(lon-sw.lng)/lonRange*(w-1);
+  const latToY=(lat)=>(ne.lat-lat)/latRange*(h-1);
+  const sampleElev=(lon,lat)=>{
+    const fx=lonToX(lon),fy=latToY(lat);
+    const x0=Math.max(0,Math.min(w-1,Math.floor(fx)));
+    const y0=Math.max(0,Math.min(h-1,Math.floor(fy)));
+    return getElev(x0,y0);
+  };
 
+  // Vertices: top surface then bottom surface
   const nV=w*h*2;
   const verts=new Float32Array(nV*3);
-  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
     const i=y*w+x,j=w*h+i;
-    verts[i*3]=x*scaleXY;verts[i*3+1]=(h-1-y)*scaleXY;verts[i*3+2]=getZ(x,y);
+    const lon=sw.lng+x/w*lonRange,lat=ne.lat-y/h*latRange;
+    const inS=pointInShape(lat,lon);
+    const ez=inS?getElev(x,y):0;
+    verts[i*3]=x*scaleXY;verts[i*3+1]=(h-1-y)*scaleXY;verts[i*3+2]=ez;
     verts[j*3]=x*scaleXY;verts[j*3+1]=(h-1-y)*scaleXY;verts[j*3+2]=0;
   }
 
-  const tris=[],B=w*h;
-  for(let y=0;y<h-1;y++) for(let x=0;x<w-1;x++){
+  const tris=[];
+  const B=w*h;
+  // Top surface
+  for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
     const a=y*w+x,b=a+1,c=(y+1)*w+x,d=c+1;
     tris.push(a,c,b,b,c,d);
   }
-  for(let y=0;y<h-1;y++) for(let x=0;x<w-1;x++){
+  // Bottom surface (reversed)
+  for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){
     const a=B+y*w+x,b=a+1,c=B+(y+1)*w+x,d=c+1;
     tris.push(a,b,c,b,d,c);
   }
-  for(let x=0;x<w-1;x++){
-    const t0=x,t1=x+1,b0=B+x,b1=B+x+1;
-    tris.push(t0,b0,t1,t1,b0,b1);
+  // Walls
+  for(let x=0;x<w-1;x++){const t0=x,t1=x+1,b0=B+x,b1=B+x+1;tris.push(t0,b0,t1,t1,b0,b1);}
+  for(let x=0;x<w-1;x++){const y=h-1,t0=y*w+x,t1=t0+1,b0=B+y*w+x,b1=b0+1;tris.push(t0,t1,b0,t1,b1,b0);}
+  for(let y=0;y<h-1;y++){const t0=y*w,t1=(y+1)*w,b0=B+y*w,b1=B+(y+1)*w;tris.push(t0,t1,b0,t1,b1,b0);}
+  for(let y=0;y<h-1;y++){const x=w-1,t0=y*w+x,t1=(y+1)*w+x,b0=B+y*w+x,b1=B+(y+1)*w+x;tris.push(t0,b0,t1,t1,b0,b1);}
+
+  // OSM layer vertex/triangle lists (appended after terrain)
+  let extraVerts=[];
+  let extraTris=[];
+  const baseOffset=nV; // current total vert count before extras
+
+  if(osmData){
+    // ── BUILDINGS ────────────────────────────────────────────────
+    if(osmData.buildings){
+      for(const bldg of osmData.buildings){
+        extrudeBuilding(bldg,scaleXY,scaleZ,sampleElev,sw,ne,lonRange,latRange,range,minH,exag,baseThick,extraVerts,extraTris,baseOffset+extraVerts.length/3);
+      }
+    }
+    // ── ROADS (push vertices down slightly) ──────────────────────
+    if(osmData.roads){
+      const vertsArr=Array.from(verts);
+      for(const road of osmData.roads){
+        recessRoad(road,vertsArr,w,h,sw,ne,lonRange,latRange,scaleXY);
+      }
+      // Copy back
+      for(let i=0;i<verts.length;i++)verts[i]=vertsArr[i];
+    }
+    // ── WATER (flatten vertices) ─────────────────────────────────
+    if(osmData.water){
+      const vertsArr=Array.from(verts);
+      for(const body of osmData.water){
+        flattenWater(body,vertsArr,w,h,sw,ne,lonRange,latRange,scaleXY);
+      }
+      for(let i=0;i<verts.length;i++)verts[i]=vertsArr[i];
+    }
   }
-  for(let x=0;x<w-1;x++){
-    const t0=(h-1)*w+x,t1=t0+1,b0=B+(h-1)*w+x,b1=b0+1;
-    tris.push(t0,t1,b0,t1,b1,b0);
+
+  // Merge extra geometry
+  let finalVerts=verts,finalTris=new Uint32Array(tris);
+  if(extraVerts.length>0){
+    const ev=new Float32Array(extraVerts);
+    const et=new Uint32Array(extraTris);
+    const combined=new Float32Array(verts.length+ev.length);
+    combined.set(verts);combined.set(ev,verts.length);
+    finalVerts=combined;
+    const combinedT=new Uint32Array(tris.length+et.length);
+    combinedT.set(finalTris);combinedT.set(et,tris.length);
+    finalTris=combinedT;
   }
-  for(let y=0;y<h-1;y++){
-    const t0=y*w,t1=(y+1)*w,b0=B+y*w,b1=B+(y+1)*w;
-    tris.push(t0,t1,b0,t1,b1,b0);
-  }
-  for(let y=0;y<h-1;y++){
-    const t0=y*w+(w-1),t1=(y+1)*w+(w-1),b0=B+y*w+(w-1),b1=B+(y+1)*w+(w-1);
-    tris.push(t0,b0,t1,t1,b0,b1);
-  }
-  return {verts,indices:new Uint32Array(tris)};
+
+  return {verts:finalVerts,indices:finalTris};
 }
 
-// ── STL ───────────────────────────────────────────────────────────
-function buildSTL(elevs,w,h,exag,base,bounds){
-  const {verts,indices}=buildGeometry(elevs,w,h,exag,base,bounds);
+function extrudeBuilding(bldg,scaleXY,scaleZ,sampleElev,sw,ne,lonRange,latRange,elevRange,minH,exag,baseThick,extraVerts,extraTris,vOffset){
+  const {coords,height}=bldg;
+  if(coords.length<3)return;
+  const pts=coords.slice(0,-1); // drop closing duplicate
+  if(pts.length<3)return;
+
+  // Convert building height to normalized z units
+  // scaleXY maps w pixels to 100 units. 1 pixel ≈ 1m at 1m res.
+  // height is in real meters. We need to express it in the same normalized space.
+  // terrain z: (elev-minH)*scaleZ+baseThick, where scaleZ=(30/elevRange)*exag
+  // building height in same z units: height*(scaleZ/1) — scaleZ already per-meter
+  const hNorm=height*scaleZ;
+
+  const n=pts.length;
+  const bottom=[],top=[];
+  for(const {lon,lat} of pts){
+    const nx=(lon-sw.lng)/lonRange*(100); // same as x*scaleXY when grid aligns
+    const ny=(ne.lat-lat)/latRange*(100);
+    const bz=sampleElev(lon,lat);
+    bottom.push([nx,ny,bz]);
+    top.push([nx,ny,bz+hNorm]);
+  }
+
+  const b0=vOffset;
+  for(const v of bottom){extraVerts.push(v[0],v[1],v[2]);}
+  const t0=vOffset+n;
+  for(const v of top){extraVerts.push(v[0],v[1],v[2]);}
+
+  // Top face — fan from centroid
+  const cx=top.reduce((s,v)=>s+v[0],0)/n;
+  const cy=top.reduce((s,v)=>s+v[1],0)/n;
+  const cz=top.reduce((s,v)=>s+v[2],0)/n;
+  const ci=vOffset+2*n; extraVerts.push(cx,cy,cz);
+
+  for(let i=0;i<n;i++){
+    const j=(i+1)%n;
+    extraTris.push(t0+i,ci,t0+j);
+  }
+  // Bottom face — reversed
+  const bci=vOffset+2*n+1;
+  const bcx=bottom.reduce((s,v)=>s+v[0],0)/n;
+  const bcy=bottom.reduce((s,v)=>s+v[1],0)/n;
+  const bcz=bottom.reduce((s,v)=>s+v[2],0)/n;
+  extraVerts.push(bcx,bcy,bcz);
+  for(let i=0;i<n;i++){
+    const j=(i+1)%n;
+    extraTris.push(b0+j,bci,b0+i);
+  }
+  // Side walls
+  for(let i=0;i<n;i++){
+    const j=(i+1)%n;
+    extraTris.push(b0+i,t0+i,b0+j);
+    extraTris.push(t0+i,t0+j,b0+j);
+  }
+}
+
+function recessRoad(road,vertsArr,w,h,sw,ne,lonRange,latRange,scaleXY){
+  const {coords,width}=road;
+  for(let i=0;i<coords.length-1;i++){
+    const p1=coords[i],p2=coords[i+1];
+    const minLon=Math.min(p1.lon,p2.lon)-width;
+    const maxLon=Math.max(p1.lon,p2.lon)+width;
+    const minLat=Math.min(p1.lat,p2.lat)-width;
+    const maxLat=Math.max(p1.lat,p2.lat)+width;
+    for(let gy=0;gy<h;gy++)for(let gx=0;gx<w;gx++){
+      const lon=sw.lng+gx/w*lonRange,lat=ne.lat-gy/h*latRange;
+      if(lon<minLon||lon>maxLon||lat<minLat||lat>maxLat)continue;
+      if(ptNearSegment(lon,lat,p1.lon,p1.lat,p2.lon,p2.lat,width)){
+        const idx=(gy*w+gx)*3;
+        vertsArr[idx+2]=Math.max(0,vertsArr[idx+2]-0.5);
+      }
+    }
+  }
+}
+
+function flattenWater(body,vertsArr,w,h,sw,ne,lonRange,latRange,scaleXY){
+  const {coords}=body;
+  if(!coords||coords.length<3)return;
+  let minZ=Infinity;
+  const inside=[];
+  for(let gy=0;gy<h;gy++)for(let gx=0;gx<w;gx++){
+    const lon=sw.lng+gx/w*lonRange,lat=ne.lat-gy/h*latRange;
+    if(ptInPolygon(lon,lat,coords)){
+      const idx=(gy*w+gx)*3;
+      inside.push(idx);
+      if(vertsArr[idx+2]<minZ)minZ=vertsArr[idx+2];
+    }
+  }
+  for(const idx of inside)vertsArr[idx+2]=minZ;
+}
+
+function ptNearSegment(px,py,ax,ay,bx,by,dist){
+  const dx=bx-ax,dy=by-ay,len2=dx*dx+dy*dy;
+  if(len2===0)return Math.hypot(px-ax,py-ay)<dist;
+  let t=((px-ax)*dx+(py-ay)*dy)/len2;
+  t=Math.max(0,Math.min(1,t));
+  return Math.hypot(px-(ax+t*dx),py-(ay+t*dy))<dist;
+}
+
+function ptInPolygon(x,y,coords){
+  let inside=false;
+  for(let i=0,j=coords.length-1;i<coords.length;j=i++){
+    const xi=coords[i].lon,yi=coords[i].lat,xj=coords[j].lon,yj=coords[j].lat;
+    if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))inside=!inside;
+  }
+  return inside;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// STL
+// ─────────────────────────────────────────────────────────────────
+function buildSTL(elevs,w,h,exag,base,bounds,osmData){
+  const {verts,indices}=buildGeometry(elevs,w,h,exag,base,bounds,osmData);
   const tc=indices.length/3,ab=new ArrayBuffer(84+tc*50),dv=new DataView(ab);
   dv.setUint32(80,tc,true);let o=84;
   for(let i=0;i<tc;i++){
@@ -548,8 +779,8 @@ function buildSTL(elevs,w,h,exag,base,bounds){
     const ax=verts[ai],ay=verts[ai+1],az=verts[ai+2];
     const bx=verts[bi],by=verts[bi+1],bz=verts[bi+2];
     const cx=verts[ci],cy=verts[ci+1],cz=verts[ci+2];
-    const ux=bx-ax,uy=by-ay,uz=bz-az,vx=cx-ax,vy=cy-ay,vz=cz-az;
-    const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
+    const ux=bx-ax,uy=by-ay,uz=bz-az,vx_=cx-ax,vy=cy-ay,vz=cz-az;
+    const nx=uy*vz-uz*vy,ny=uz*vx_-ux*vz,nz=ux*vy-uy*vx_;
     const nl=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
     dv.setFloat32(o,nx/nl,true);dv.setFloat32(o+4,ny/nl,true);dv.setFloat32(o+8,nz/nl,true);o+=12;
     dv.setFloat32(o,ax,true);dv.setFloat32(o+4,ay,true);dv.setFloat32(o+8,az,true);o+=12;
@@ -560,10 +791,12 @@ function buildSTL(elevs,w,h,exag,base,bounds){
   return ab;
 }
 
-// ── OBJ ───────────────────────────────────────────────────────────
-function buildOBJ(elevs,w,h,exag,base,bounds){
-  const {verts,indices}=buildGeometry(elevs,w,h,exag,base,bounds);
-  const lines=['# TerrainForge OBJ','# Source: USGS 3DEP','# Watertight mesh',''];
+// ─────────────────────────────────────────────────────────────────
+// OBJ
+// ─────────────────────────────────────────────────────────────────
+function buildOBJ(elevs,w,h,exag,base,bounds,osmData){
+  const {verts,indices}=buildGeometry(elevs,w,h,exag,base,bounds,osmData);
+  const lines=['# TerrainForge OBJ','# USGS 3DEP + OpenStreetMap',''];
   for(let i=0;i<verts.length/3;i++)
     lines.push(`v ${verts[i*3].toFixed(4)} ${verts[i*3+1].toFixed(4)} ${verts[i*3+2].toFixed(4)}`);
   lines.push('');
@@ -572,32 +805,32 @@ function buildOBJ(elevs,w,h,exag,base,bounds){
   return lines.join('\n');
 }
 
-// ── PREVIEW ───────────────────────────────────────────────────────
-function showPreview(elevs,w,h,exag,base,bounds){
+// ─────────────────────────────────────────────────────────────────
+// PREVIEW
+// ─────────────────────────────────────────────────────────────────
+function showPreview(elevs,w,h,exag,base,bounds,osmData){
   if(terrainMesh){scene.remove(terrainMesh);terrainMesh.geometry.dispose();terrainMesh.material.dispose();terrainMesh=null;}
   const maxPts=200,sx=Math.max(1,Math.floor(w/maxPts)),sy=Math.max(1,Math.floor(h/maxPts));
   const cols=Math.floor(w/sx),rows=Math.floor(h/sy);
+  const sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
+  const lonRange=ne.lng-sw.lng,latRange=ne.lat-sw.lat;
   const minH=arrayMin(elevs),range=(arrayMax(elevs)-minH)||1;
   const scaleXY=100/Math.max(cols,rows),scaleZ=(30/range)*exag;
-  const sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
-  const latRange=ne.lat-sw.lat,lngRange=ne.lng-sw.lng;
   const pos=new Float32Array(cols*rows*3),col=new Float32Array(cols*rows*3);
   let idx=0;
-  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
     const srcX=c*sx,srcY=r*sy;
-    const lat=ne.lat-(srcY/h)*latRange,lng=sw.lng+(srcX/w)*lngRange;
-    const inShape=pointInShape(lat,lng);
+    const lon=sw.lng+srcX/w*lonRange,lat=ne.lat-srcY/h*latRange;
+    const inS=pointInShape(lat,lon);
     const v=elevs[srcY*w+srcX];
-    const z=inShape&&v>-9000&&isFinite(v)?(v-minH)*scaleZ+base:0;
+    const z=inS&&v>-9000&&isFinite(v)?(v-minH)*scaleZ+base:0;
     pos[idx*3]=(c-cols/2)*scaleXY;pos[idx*3+1]=z-15;pos[idx*3+2]=(r-rows/2)*scaleXY;
     const t=z/((30*exag)+base);
-    col[idx*3]=inShape?0.1+t*0.6:0.08;
-    col[idx*3+1]=inShape?0.3+t*0.5:0.08;
-    col[idx*3+2]=0.05;
+    col[idx*3]=0.1+t*0.6;col[idx*3+1]=0.3+t*0.5;col[idx*3+2]=0.05;
     idx++;
   }
   const inds=[];
-  for(let r=0;r<rows-1;r++) for(let c=0;c<cols-1;c++){
+  for(let r=0;r<rows-1;r++)for(let c=0;c<cols-1;c++){
     const a=r*cols+c,b=a+1,cc=(r+1)*cols+c,d=cc+1;
     inds.push(a,cc,b,b,cc,d);
   }
@@ -605,13 +838,54 @@ function showPreview(elevs,w,h,exag,base,bounds){
   geo.setIndex(inds);geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
   geo.setAttribute('color',new THREE.BufferAttribute(col,3));
   geo.computeVertexNormals();
-  terrainMesh=new THREE.Mesh(geo,new THREE.MeshPhongMaterial({vertexColors:true,side:THREE.DoubleSide}));
-  scene.add(terrainMesh);camDist=180;rotX=0.5;rotY=0.4;
+
+  // Add building boxes to preview
+  const group=new THREE.Group();
+  const terrainM=new THREE.Mesh(geo,new THREE.MeshPhongMaterial({vertexColors:true,side:THREE.DoubleSide}));
+  group.add(terrainM);
+
+  if(osmData&&osmData.buildings){
+    const bMat=new THREE.MeshPhongMaterial({color:0xaaaaaa,side:THREE.DoubleSide});
+    const lonR=ne.lng-sw.lng,latR=ne.lat-sw.lat;
+    const sampleZ=(lon,lat)=>{
+      const gx=Math.round((lon-sw.lng)/lonR*(w-1));
+      const gy=Math.round((ne.lat-lat)/latR*(h-1));
+      const gxc=Math.max(0,Math.min(w-1,gx)),gyc=Math.max(0,Math.min(h-1,gy));
+      const v=elevs[gyc*w+gxc];
+      return(v>-9000&&isFinite(v))?(v-minH)*scaleZ+base:base;
+    };
+    for(const bldg of osmData.buildings.slice(0,500)){
+      try{
+        const pts=bldg.coords.slice(0,-1);if(pts.length<3)continue;
+        const hNorm=bldg.height*scaleZ;
+        // Quick bounding box preview for buildings
+        let minLon=Infinity,maxLon=-Infinity,minLat=Infinity,maxLat=-Infinity;
+        for(const p of pts){minLon=Math.min(minLon,p.lon);maxLon=Math.max(maxLon,p.lon);minLat=Math.min(minLat,p.lat);maxLat=Math.max(maxLat,p.lat);}
+        const cLon=(minLon+maxLon)/2,cLat=(minLat+maxLat)/2;
+        const bx=(cLon-sw.lng)/lonR*(100)-(cols/2)*scaleXY;
+        const bz=(ne.lat-cLat)/latR*(100)-(rows/2)*scaleXY;
+        const bw=(maxLon-minLon)/lonR*100;
+        const bd=(maxLat-minLat)/latR*100;
+        const bBaseZ=sampleZ(cLon,cLat)-15;
+        const bGeo=new THREE.BoxGeometry(bw,hNorm,bd);
+        const bMesh=new THREE.Mesh(bGeo,bMat);
+        bMesh.position.set(bx,bBaseZ+hNorm/2,bz);
+        group.add(bMesh);
+      }catch(e){continue;}
+    }
+  }
+
+  scene.add(group);
+  terrainMesh=group;
+  terrainMesh.position.set(0,0,0);
+  camDist=180;rotX=0.5;rotY=0.4;
   document.getElementById('empty-preview').style.display='none';
   document.getElementById('preview-hint').style.display='block';
 }
 
-// ── GENERATE ──────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// GENERATE
+// ─────────────────────────────────────────────────────────────────
 async function generate(){
   if(!currentBounds)return;
   stlBuffer=null;objString=null;
@@ -622,56 +896,94 @@ async function generate(){
   const btn=document.getElementById('gen-btn');
   btn.disabled=true;btn.textContent='generating...';
   setProgress(5);
+
+  const wantBuildings=document.getElementById('tog-buildings').checked;
+  const wantRoads=document.getElementById('tog-roads').checked;
+  const wantWater=document.getElementById('tog-water').checked;
+  const useOSM=wantBuildings||wantRoads||wantWater;
+
   let res=selectedRes;
   try{
     const sw=currentBounds.getSouthWest(),ne=currentBounds.getNorthEast();
     log(`${sw.lat.toFixed(4)}°N ${sw.lng.toFixed(4)}°W → ${ne.lat.toFixed(4)}°N ${ne.lng.toFixed(4)}°W`);
-    let fetchResult,parseResult;
-    try{
-      fetchResult=await fetchElevation(currentBounds,res);
-      setProgress(38);
-      log('parsing tiff...');
-      parseResult=parseTiff(fetchResult.buf,fetchResult.width,fetchResult.height);
-    } catch(e){
-      if(res===1){
-        log(`1m failed — ${e.message}`,'warn');
-        log('falling back to 10m...','warn');
-        res=10;
-        fetchResult=await fetchElevation(currentBounds,res);
-        setProgress(38);
-        log('parsing tiff...');
-        parseResult=parseTiff(fetchResult.buf,fetchResult.width,fetchResult.height);
-      } else throw e;
-    }
-    const {elevs,width:w,height:h}=parseResult;
+
+    // Fetch elevation + OSM in parallel
+    let fetchResult,osmData=null;
+    const elevPromise=(async()=>{
+      try{
+        return await fetchElevation(currentBounds,res);
+      }catch(e){
+        if(res===1){
+          log(`1m failed (${e.message}) — falling back to 10m`,'warn');
+          res=10;
+          return await fetchElevation(currentBounds,res);
+        }
+        throw e;
+      }
+    })();
+
+    const osmPromise=useOSM?(async()=>{
+      try{
+        log(`fetching OSM data...`);
+        const d=await fetchOSM(currentBounds,wantBuildings,wantRoads,wantWater);
+        const parts=[];
+        if(d.buildings?.length)parts.push(`${d.buildings.length} buildings`);
+        if(d.roads?.length)parts.push(`${d.roads.length} roads`);
+        if(d.water?.length)parts.push(`${d.water.length} water bodies`);
+        log(`OSM: ${parts.join(', ')||'no features found'}`,'ok');
+        return d;
+      }catch(e){
+        log(`OSM fetch failed: ${e.message} — continuing without OSM layers`,'warn');
+        return null;
+      }
+    })():Promise.resolve(null);
+
+    setProgress(15);
+    [fetchResult,osmData]=await Promise.all([elevPromise,osmPromise]);
+    setProgress(45);
+
+    log('parsing tiff...');
+    const {elevs,width:w,height:h}=parseTiff(fetchResult.buf,fetchResult.width,fetchResult.height);
     log(`${w}×${h} grid ready`,'ok');
-    setProgress(55);
+    setProgress(58);
+
     const exag=parseFloat(document.getElementById('exag').value);
     const base=parseInt(document.getElementById('base').value);
+
     log('building preview...');
-    showPreview(elevs,w,h,exag,base,currentBounds);
+    showPreview(elevs,w,h,exag,base,currentBounds,osmData);
     setProgress(68);
+
     log('building stl...');
-    stlBuffer=buildSTL(elevs,w,h,exag,base,currentBounds);
+    stlBuffer=buildSTL(elevs,w,h,exag,base,currentBounds,osmData);
     setProgress(84);
+
     log('building obj...');
-    objString=buildOBJ(elevs,w,h,exag,base,currentBounds);
+    objString=buildOBJ(elevs,w,h,exag,base,currentBounds,osmData);
     setProgress(100);
+
     const tris=(stlBuffer.byteLength-84)/50;
     log(`${tris.toLocaleString()} triangles · ${(stlBuffer.byteLength/1024/1024).toFixed(2)}mb`,'ok');
+    if(osmData&&osmData.buildings?.length)
+      log(`note: building heights are estimated where OSM lacks height tags`,'info');
     log('done.','ok');
+
     document.getElementById('dl-stl').style.display='block';
     document.getElementById('dl-obj').style.display='block';
-    updateGmapsLink();
+    const c=currentBounds.getCenter();
+    document.getElementById('gmaps-btn').href=`https://www.google.com/maps/@${c.lat.toFixed(6)},${c.lng.toFixed(6)},14z`;
+    document.getElementById('gmaps-btn').style.display='block';
     btn.textContent='Regenerate';btn.disabled=false;
-  } catch(e){
+  }catch(e){
     log(e.message,'err');
     btn.textContent='Generate';btn.disabled=false;
     setProgress(0);
   }
 }
 
-// ── DOWNLOAD ──────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// DOWNLOAD
+// ─────────────────────────────────────────────────────────────────
 function downloadSTL(){
   if(!stlBuffer||!currentBounds)return;
   const c=currentBounds.getCenter();
